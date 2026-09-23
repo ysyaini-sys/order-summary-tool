@@ -364,6 +364,18 @@ function getMultiplier(spec){
   if(/12[瓶罐]/.test(spec)) return 2;
   return 1;
 }
+function extractSpec(attr){
+  if(!attr) return '';
+  var s=String(attr).trim();
+  if(s.indexOf('规格:')===0||s.indexOf('规格：')===0){
+    s=s.replace(/^规格[:：]/,'');
+    var semi=s.indexOf(';'); if(semi===-1) semi=s.indexOf('；');
+    if(semi!==-1) s=s.substring(0,semi);
+  } else if(s.indexOf('净含量:')===0||s.indexOf('净含量：')===0){
+    s=s.replace(/^净含量[:：]/,'');
+  }
+  return s.trim();
+}
 async function detectDates(files){
   const dateSet = new Set();
   for(const f of files){
@@ -414,10 +426,12 @@ async function detectDates(files){
           const rows=sheetToJson(wb.Sheets[sn]);
           for(const r of rows){
             const dateCol=Object.keys(r).find(k=>/支付完成时间|订单支付时间|支付时间/i.test(k));
-            const idCol=Object.keys(r).find(k=>/商品ID|商品id/i.test(k));
-            const specCol=Object.keys(r).find(k=>/商品规格|规格/i.test(k));
+            const idCol=Object.keys(r).find(k=>/商品ID|商品id|商品编码\(平台\)/i.test(k));
+            var specCol=Object.keys(r).find(k=>/商品规格|规格名称/i.test(k));
+            if(!specCol) specCol=Object.keys(r).find(k=>k==='商品属性');
             const qtyCol=Object.keys(r).find(k=>/商品数量|成交数量|数量/i.test(k));
-            const priceCol=Object.keys(r).find(k=>/商品单价|单价|价格/i.test(k));
+            var priceCol=Object.keys(r).find(k=>k==='商品单价'||k==='商品实际价格(单件)');
+            if(!priceCol) priceCol=Object.keys(r).find(k=>/商品价格\(单件\)|单价|价格/i.test(k));
             const statusCol=Object.keys(r).find(k=>/订单状态|交易状态|状态/i.test(k));
             if(!idCol||!qtyCol) continue;
             if(statusCol){ const st=String(r[statusCol]).trim(); if(st==='已关闭'||st==='交易关闭'||st==='已取消'){ totalClosed++; continue; } }
@@ -427,7 +441,9 @@ async function detectDates(files){
             }
             const qty=parseFloat(String(r[qtyCol]).replace(/,/g,''))||0;
             const price=priceCol?(parseFloat(String(r[priceCol]).replace(/,/g,''))||0):0;
-            fileRows.push({id:String(r[idCol]).trim(), spec:specCol?String(r[specCol]).trim():'', qty:qty, amount:price*qty});
+            var rawSpec=specCol?String(r[specCol]).trim():'';
+            if(specCol==='商品属性') rawSpec=extractSpec(rawSpec);
+            fileRows.push({id:String(r[idCol]).trim(), spec:rawSpec, qty:qty, amount:price*qty});
           }
         }
         if(fileRows.length===0) continue;
