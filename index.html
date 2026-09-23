@@ -275,83 +275,101 @@ function parseCSVText(text){
 }
 
 // ===== 快手加密xlsx浏览器端解密 (Agile Encryption) =====
+function findCfbEntry(ole, name){
+  var dirs = ole.FullPathDirectory || ole.FileIndex || [];
+  for(var i=0; i<dirs.length; i++){
+    var e = dirs[i];
+    if(e.name === name || (e.name && e.name.indexOf(name) >= 0)) return e;
+  }
+  return null;
+}
+function cfbContent(entry){
+  if(!entry) return null;
+  var c = entry.content;
+  if(!c) return null;
+  if(c instanceof Uint8Array) return c;
+  if(c instanceof ArrayBuffer) return new Uint8Array(c);
+  if(Array.isArray(c)) return new Uint8Array(c);
+  // Try converting
+  try { return new Uint8Array(c); } catch(e){ return null; }
+}
+
 async function decryptAgileXlsx(buf, password){
   var cfb = XLSX.CFB;
   if(!cfb) throw new Error('CFB库未加载，请刷新页面');
-  var ole = cfb.read(buf, {type:'array'});
+  var ole = cfb.read(buf);
   
   // Extract EncryptionInfo stream
-  var encEntry = cfb.find(ole, 'EncryptionInfo');
+  var encEntry = findCfbEntry(ole, 'EncryptionInfo');
   if(!encEntry) throw new Error('文件未加密或格式不支持');
-  var encInfoRaw = encEntry.content;
+  var encInfoRaw = cfbContent(encEntry);
+  if(!encInfoRaw) throw new Error('无法读取加密信息');
   
   // Skip 8-byte header (version + flags), parse XML
-  const encInfoXml = new TextDecoder('utf-8').decode(encInfoRaw.slice(8));
-  const parser = new DOMParser();
-  const xml = parser.parseFromString(encInfoXml, 'text/xml');
-  const encKey = xml.getElementsByTagName('p:encryptedKey')[0] || xml.getElementsByTagName('encryptedKey')[0];
+  var encInfoXml = new TextDecoder('utf-8').decode(encInfoRaw.slice(8));
+  var parser = new DOMParser();
+  var xml = parser.parseFromString(encInfoXml, 'text/xml');
+  var encKey = xml.getElementsByTagName('p:encryptedKey')[0] || xml.getElementsByTagName('encryptedKey')[0];
   if(!encKey) throw new Error('不支持的加密类型');
   
-  const salt = base64ToBytes(encKey.getAttribute('saltValue'));
-  const spinCount = parseInt(encKey.getAttribute('spinCount'));
-  const keyBits = parseInt(encKey.getAttribute('keyBits'));
-  const encryptedKeyValue = base64ToBytes(encKey.getAttribute('encryptedKeyValue'));
-  const encryptedVerifierHashInput = base64ToBytes(encKey.getAttribute('encryptedVerifierHashInput'));
-  const encryptedVerifierHashValue = base64ToBytes(encKey.getAttribute('encryptedVerifierHashValue'));
+  var salt = base64ToBytes(encKey.getAttribute('saltValue'));
+  var spinCount = parseInt(encKey.getAttribute('spinCount'));
+  var keyBits = parseInt(encKey.getAttribute('keyBits'));
+  var encryptedKeyValue = base64ToBytes(encKey.getAttribute('encryptedKeyValue'));
+  var encryptedVerifierHashInput = base64ToBytes(encKey.getAttribute('encryptedVerifierHashInput'));
+  var encryptedVerifierHashValue = base64ToBytes(encKey.getAttribute('encryptedVerifierHashValue'));
   
   // Derive key: H = SHA1(salt + utf16le(password)), then iterate
-  const enc = new TextEncoder();
-  const pwBytes = strToUtf16le(password);
+  var pwBytes = strToUtf16le(password);
   
-  let h = await crypto.subtle.digest('SHA-1', concatBytes(salt, pwBytes));
-  for(let i = 1; i <= spinCount; i++){
-    const iBuf = new ArrayBuffer(4);
+  var h = await crypto.subtle.digest('SHA-1', concatBytes(salt, pwBytes));
+  for(var i = 1; i <= spinCount; i++){
+    var iBuf = new ArrayBuffer(4);
     new DataView(iBuf).setUint32(0, i, true);
     h = await crypto.subtle.digest('SHA-1', concatBytes(new Uint8Array(h), new Uint8Array(iBuf)));
   }
   
-  const derivedKey = new Uint8Array(h).slice(0, keyBits/8);
+  var derivedKey = new Uint8Array(h).slice(0, keyBits/8);
   
   // Import derived key for AES-CBC
-  const aesKey = await crypto.subtle.importKey('raw', derivedKey, {name:'AES-CBC'}, false, ['decrypt']);
+  var aesKey = await crypto.subtle.importKey('raw', derivedKey, {name:'AES-CBC'}, false, ['decrypt']);
   
   // Decrypt encryptedKeyValue → content key
-  const contentKeyRaw = await crypto.subtle.decrypt(
+  var contentKeyRaw = await crypto.subtle.decrypt(
     {name:'AES-CBC', iv: salt}, aesKey, encryptedKeyValue
   );
-  const contentKey = new Uint8Array(contentKeyRaw);
+  var contentKey = new Uint8Array(contentKeyRaw);
   
   // Verify password
-  const verifierHashInput = new Uint8Array(await crypto.subtle.decrypt(
+  var verifierHashInput = new Uint8Array(await crypto.subtle.decrypt(
     {name:'AES-CBC', iv: salt}, aesKey, encryptedVerifierHashInput
   ));
-  const verifierHashValue = new Uint8Array(await crypto.subtle.decrypt(
+  var verifierHashValue = new Uint8Array(await crypto.subtle.decrypt(
     {name:'AES-CBC', iv: salt}, aesKey, encryptedVerifierHashValue
   ));
-  const computedHash = new Uint8Array(await crypto.subtle.digest('SHA-1', verifierHashInput));
-  // Compare (first 20 bytes)
-  let match = true;
-  for(let i = 0; i < 20; i++){
-    if(computedHash[i] !== verifierHashValue[i]){ match = false; break; }
+  var computedHash = new Uint8Array(await crypto.subtle.digest('SHA-1', verifierHashInput));
+  var match = true;
+  for(var j = 0; j < 20; j++){
+    if(computedHash[j] !== verifierHashValue[j]){ match = false; break; }
   }
   if(!match) throw new Error('密码错误');
   
   // Decrypt EncryptedPackage
-  var pkgEntry = cfb.find(ole, 'EncryptedPackage');
+  var pkgEntry = findCfbEntry(ole, 'EncryptedPackage');
   if(!pkgEntry) throw new Error('找不到加密数据');
-  var pkgData = new Uint8Array(pkgEntry.content);
+  var pkgData = cfbContent(pkgEntry);
+  if(!pkgData) throw new Error('无法读取加密数据');
   
   // First 8 bytes = unencrypted size (LE uint64)
-  const dataSize = Number(new DataView(pkgData.buffer, pkgData.byteOffset).getBigUint64(0, true));
-  const encryptedData = pkgData.slice(8);
+  var dataSize = Number(new DataView(pkgData.buffer, pkgData.byteOffset, pkgData.byteLength).getBigUint64(0, true));
+  var encryptedData = pkgData.slice(8);
   
   // Decrypt with content key, IV = salt
-  const contentAesKey = await crypto.subtle.importKey('raw', contentKey, {name:'AES-CBC'}, false, ['decrypt']);
-  const decrypted = await crypto.subtle.decrypt(
+  var contentAesKey = await crypto.subtle.importKey('raw', contentKey, {name:'AES-CBC'}, false, ['decrypt']);
+  var decrypted = await crypto.subtle.decrypt(
     {name:'AES-CBC', iv: salt}, contentAesKey, encryptedData
   );
   
-  // Return only the actual data (pad to dataSize if needed)
   return new Uint8Array(decrypted).slice(0, dataSize);
 }
 
@@ -396,7 +414,7 @@ function readFile(file, platform){
           if(isOle && platform==='kuaishou'){
             var pw = document.getElementById('ks-password').value.trim();
             if(!pw) throw new Error('请先输入快手文件密码');
-            var decrypted = await decryptAgileXlsx(e.target.result, pw);
+            var decrypted = await decryptAgileXlsx(buf, pw);
             resolve(XLSX.read(decrypted, {type:'array',cellDates:true}));
           } else {
             resolve(XLSX.read(buf,{type:'array',cellDates:true}));
