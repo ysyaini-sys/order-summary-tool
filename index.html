@@ -220,7 +220,7 @@ function readFile(file){
 }
 function sheetToJson(ws){ return XLSX.utils.sheet_to_json(ws,{defval:''}); }
 function showResult(tab, show){ document.getElementById('result-'+tab).classList.toggle('show', show); }
-const uploads = { summary: setupUpload('summary'), douyin: setupUpload('douyin'), shipinhao: setupUpload('shipinhao'), kuaishou: setupUpload('kuaishou') };
+const uploads = { summary: setupUpload('summary') };
 
 document.getElementById('btn-process-summary').addEventListener('click', async ()=>{
   const files = uploads.summary.getFiles();
@@ -320,7 +320,7 @@ async function detectDates(files){
 }
 ['douyin','shipinhao','kuaishou'].forEach(tab=>{
   let selectedDate = null;
-  setupUpload(tab, async (files)=>{
+  uploads[tab] = setupUpload(tab, async (files)=>{
     const btn = document.getElementById('btn-process-'+tab);
     const area = document.getElementById('date-area-'+tab);
     if(files.length===0){ area.innerHTML = '<span style="color:#999;font-size:12px;">上传后自动识别日期</span>'; btn.disabled = true; selectedDate = null; return; }
