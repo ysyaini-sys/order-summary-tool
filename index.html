@@ -197,11 +197,19 @@ const COMBO_PAIRS = [
   ['冰白葡萄原汁1箱320ml*6瓶+山葡萄原汁1箱320ml*6瓶(到手12瓶)','山葡萄原汁1箱320ml*6瓶+冰白葡萄原汁1箱320ml*6瓶(到手12瓶)']
 ];
 
+const FEISHU_BASE = 'https://open.feishu.cn/open-apis/';
+const CORS_PROXY = 'https://corsproxy.io/?';
+
+async function feishuFetch(path, options){
+  const url = CORS_PROXY + encodeURIComponent(FEISHU_BASE + path);
+  return fetch(url, options);
+}
+
 async function feishuGetToken(){
   const appId = localStorage.getItem('feishu_app_id') || '';
   const appSecret = localStorage.getItem('feishu_app_secret') || '';
   if(!appId || !appSecret) throw new Error('请先点击右上角"⚙️ 飞书设置"填写应用凭证');
-  const r = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal',{
+  const r = await feishuFetch('auth/v3/tenant_access_token/internal',{
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({app_id:appId, app_secret:appSecret})
   });
@@ -213,7 +221,7 @@ async function feishuGetToken(){
 async function feishuOpenSheet(title, rows){
   showFeishuStatus('loading', '正在创建飞书表格...');
   const token = await feishuGetToken();
-  const cr = await fetch('https://open.feishu.cn/open-apis/sheets/v3/spreadsheets',{
+  const cr = await feishuFetch('sheets/v3/spreadsheets',{
     method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
     body: JSON.stringify({title:title, folder_token:''})
   });
@@ -221,7 +229,7 @@ async function feishuOpenSheet(title, rows){
   if(cd.code!==0) throw new Error('创建表格失败: '+cd.msg);
   const ssToken = cd.data.spreadsheet.spreadsheet_token;
   const url = cd.data.spreadsheet.url;
-  const mr = await fetch('https://open.feishu.cn/open-apis/sheets/v3/spreadsheets/'+ssToken+'/sheets/query',{
+  const mr = await feishuFetch('sheets/v3/spreadsheets/'+ssToken+'/sheets/query',{
     headers:{'Authorization':'Bearer '+token}
   });
   const md = await mr.json();
@@ -233,7 +241,7 @@ async function feishuOpenSheet(title, rows){
     const startRow = i+1;
     const endRow = i+batch.length;
     const range = sheetId+'!A'+startRow+':'+String.fromCharCode(64+rows[0].length)+endRow;
-    const wr = await fetch('https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/'+ssToken+'/values',{
+    const wr = await feishuFetch('sheets/v2/spreadsheets/'+ssToken+'/values',{
       method:'PUT', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
       body: JSON.stringify({valueRange:{range:range, values:batch}})
     });
