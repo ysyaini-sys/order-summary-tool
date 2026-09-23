@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>电商订单汇总工具</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.sheetjs.com/cfb-1.2.2/package/dist/cfb.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background:#f5f7fa; color:#333; height:100vh; overflow:hidden; display:flex; flex-direction:column; }
@@ -277,11 +276,12 @@ function parseCSVText(text){
 
 // ===== 快手加密xlsx浏览器端解密 (Agile Encryption) =====
 async function decryptAgileXlsx(buf, password){
-  // Read OLE2 structure using CFB library
-  var ole = CFB.read(buf, {type:'array'});
+  var cfb = XLSX.CFB;
+  if(!cfb) throw new Error('CFB库未加载，请刷新页面');
+  var ole = cfb.read(buf, {type:'array'});
   
   // Extract EncryptionInfo stream
-  var encEntry = CFB.find(ole, 'EncryptionInfo');
+  var encEntry = cfb.find(ole, 'EncryptionInfo');
   if(!encEntry) throw new Error('文件未加密或格式不支持');
   var encInfoRaw = encEntry.content;
   
@@ -337,7 +337,7 @@ async function decryptAgileXlsx(buf, password){
   if(!match) throw new Error('密码错误');
   
   // Decrypt EncryptedPackage
-  var pkgEntry = CFB.find(ole, 'EncryptedPackage');
+  var pkgEntry = cfb.find(ole, 'EncryptedPackage');
   if(!pkgEntry) throw new Error('找不到加密数据');
   var pkgData = new Uint8Array(pkgEntry.content);
   
@@ -753,6 +753,27 @@ async function detectDates(files, platform){
     });
     XLSX.writeFile(wb,tab+'_订单汇总_'+(window['_'+tab+'Date']||'')+'.xlsx');
   });
+});
+
+// 快手密码输入后自动重试日期识别
+document.getElementById('ks-password').addEventListener('change', async function(){
+  var files = uploads.kuaishou ? uploads.kuaishou.getFiles() : [];
+  if(files.length === 0) return;
+  var area = document.getElementById('date-area-kuaishou');
+  var btn = document.getElementById('btn-process-kuaishou');
+  area.innerHTML = '<span style="color:#999;font-size:12px;">正在重试...</span>';
+  try {
+    var dates = await detectDates(files, 'kuaishou');
+    if(dates.length > 0){
+      area.innerHTML = '📅 <span class="date-badge">'+dates[dates.length-1]+'</span>';
+      window._kuaishouDate = dates[dates.length-1];
+      btn.disabled = false;
+    } else {
+      area.innerHTML = '<span style="color:#c62828;font-size:12px;">仍未识别到日期</span>';
+    }
+  } catch(err){
+    area.innerHTML = '<span style="color:#c62828;font-size:12px;">'+(err.message||'重试失败')+'</span>';
+  }
 });
 
 // 抖音汇总页（Step 8）：15个固定商品
