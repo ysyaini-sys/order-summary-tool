@@ -34,6 +34,18 @@ body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background:#f5
 .btn-secondary:hover { background:#f0f5ff; }
 .btn-automa { background:#e67e22; }
 .btn-automa:hover { background:#d35400; }
+.btn-feishu { background:#3370ff; }
+.btn-feishu:hover { background:#2456c5; }
+.btn-feishu:disabled { background:#a0b4d4; }
+.btn-settings { position:absolute; right:20px; top:12px; background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.3); padding:4px 12px; border-radius:4px; cursor:pointer; font-size:12px; }
+.btn-settings:hover { background:rgba(255,255,255,.25); }
+.modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.4); z-index:100; justify-content:center; align-items:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:#fff; border-radius:8px; padding:24px; width:360px; box-shadow:0 4px 20px rgba(0,0,0,.15); }
+.modal h3 { font-size:15px; margin-bottom:16px; color:#333; }
+.modal label { display:block; font-size:12px; color:#666; margin-bottom:4px; }
+.modal input { width:100%; padding:8px 10px; border:1px solid #d0d7e2; border-radius:4px; font-size:13px; margin-bottom:12px; box-sizing:border-box; }
+.modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
 .result-msg { padding:6px 10px; border-radius:4px; margin-top:8px; font-size:11px; flex-shrink:0; }
 .result-msg.ok { background:#e8f5e9; color:#2e7d32; }
 .result-msg.err { background:#fdecea; color:#c62828; }
@@ -60,6 +72,7 @@ td.num { text-align:right; font-family:Consolas,monospace; }
 <div class="header">
   <h1>电商订单汇总工具</h1>
   <p>数据汇总 · 抖音 · 视频号 · 快手（同一页面，独立运行）</p>
+  <button class="btn-settings" id="btn-settings">⚙️ 飞书设置</button>
 </div>
 <div class="container">
   <div class="section">
@@ -77,8 +90,10 @@ td.num { text-align:right; font-family:Consolas,monospace; }
       <button class="btn btn-automa" id="btn-automa-toufang">🚀 一键下载</button>
       <button class="btn" id="btn-process-summary">开始汇总</button>
       <button class="btn btn-secondary" id="btn-download-summary" style="display:none;">下载</button>
+      <button class="btn btn-feishu" id="btn-feishu-summary" style="display:none;">📊 飞书打开</button>
     </div>
     <div id="msg-summary"></div>
+    <div id="feishu-status"></div>
     <div class="result-box" id="result-summary">
       <div class="stats" id="stats-summary"></div>
       <div class="table-wrap"><table id="table-summary"></table></div>
@@ -101,6 +116,7 @@ td.num { text-align:right; font-family:Consolas,monospace; }
     <div class="controls">
       <button class="btn" id="btn-process-douyin" disabled>开始汇总</button>
       <button class="btn btn-secondary" id="btn-download-douyin" style="display:none;">下载</button>
+      <button class="btn btn-feishu" id="btn-feishu-douyin" style="display:none;">📊 飞书打开</button>
     </div>
     <div id="msg-douyin"></div>
     <div class="result-box" id="result-douyin">
@@ -125,6 +141,7 @@ td.num { text-align:right; font-family:Consolas,monospace; }
     <div class="controls">
       <button class="btn" id="btn-process-shipinhao" disabled>开始汇总</button>
       <button class="btn btn-secondary" id="btn-download-shipinhao" style="display:none;">下载</button>
+      <button class="btn btn-feishu" id="btn-feishu-shipinhao" style="display:none;">📊 飞书打开</button>
     </div>
     <div id="msg-shipinhao"></div>
     <div class="result-box" id="result-shipinhao">
@@ -149,6 +166,7 @@ td.num { text-align:right; font-family:Consolas,monospace; }
     <div class="controls">
       <button class="btn" id="btn-process-kuaishou" disabled>开始汇总</button>
       <button class="btn btn-secondary" id="btn-download-kuaishou" style="display:none;">下载</button>
+      <button class="btn btn-feishu" id="btn-feishu-kuaishou" style="display:none;">📊 飞书打开</button>
     </div>
     <div id="msg-kuaishou"></div>
     <div class="result-box" id="result-kuaishou">
@@ -164,6 +182,60 @@ const COMBO_PAIRS = [
   ['山葡萄原汁1箱+冰白葡萄原汁1箱320ml*12罐(到手12罐)','冰白葡萄原汁1箱320ml*6罐+山葡萄原汁1箱320ml*6瓶罐320ml*12罐(到手12罐)'],
   ['冰白葡萄原汁1箱320ml*6瓶+山葡萄原汁1箱320ml*6瓶(到手12瓶)','山葡萄原汁1箱320ml*6瓶+冰白葡萄原汁1箱320ml*6瓶(到手12瓶)']
 ];
+
+async function feishuGetToken(){
+  const appId = localStorage.getItem('feishu_app_id') || '';
+  const appSecret = localStorage.getItem('feishu_app_secret') || '';
+  if(!appId || !appSecret) throw new Error('请先点击右上角"⚙️ 飞书设置"填写应用凭证');
+  const r = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({app_id:appId, app_secret:appSecret})
+  });
+  const d = await r.json();
+  if(d.code!==0) throw new Error('获取token失败: '+d.msg);
+  return d.tenant_access_token;
+}
+
+async function feishuOpenSheet(title, rows){
+  showFeishuStatus('loading', '正在创建飞书表格...');
+  const token = await feishuGetToken();
+  const cr = await fetch('https://open.feishu.cn/open-apis/sheets/v3/spreadsheets',{
+    method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body: JSON.stringify({title:title, folder_token:''})
+  });
+  const cd = await cr.json();
+  if(cd.code!==0) throw new Error('创建表格失败: '+cd.msg);
+  const ssToken = cd.data.spreadsheet.spreadsheet_token;
+  const url = cd.data.spreadsheet.url;
+  const mr = await fetch('https://open.feishu.cn/open-apis/sheets/v3/spreadsheets/'+ssToken+'/sheets/query',{
+    headers:{'Authorization':'Bearer '+token}
+  });
+  const md = await mr.json();
+  const sheetId = md.data.sheets[0].sheet_id;
+  showFeishuStatus('loading', '正在写入数据...');
+  const BATCH=500;
+  for(let i=0;i<rows.length;i+=BATCH){
+    const batch = rows.slice(i, i+BATCH);
+    const startRow = i+1;
+    const endRow = i+batch.length;
+    const range = sheetId+'!A'+startRow+':'+String.fromCharCode(64+rows[0].length)+endRow;
+    const wr = await fetch('https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/'+ssToken+'/values',{
+      method:'PUT', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body: JSON.stringify({valueRange:{range:range, values:batch}})
+    });
+    const wd = await wr.json();
+    if(wd.code!==0) throw new Error('写入数据失败: '+wd.msg);
+  }
+  showFeishuStatus('ok', '飞书表格已创建');
+  window.open(url, '_blank');
+}
+
+function showFeishuStatus(type, text){
+  const el = document.getElementById('feishu-status');
+  if(!el) return;
+  el.innerHTML = '<div class="result-msg '+type+'">'+text+'</div>';
+  if(type==='ok') setTimeout(()=>{el.innerHTML='';}, 5000);
+}
 function setupUpload(tab, onFilesChanged){
   const zone = document.getElementById('upload-'+tab);
   const list = document.getElementById('file-list-'+tab);
@@ -249,8 +321,16 @@ document.getElementById('btn-process-summary').addEventListener('click', async (
     tbl.appendChild(tb);
     window._summaryData=flatRows;
     document.getElementById('btn-download-summary').style.display='inline-block';
+    document.getElementById('btn-feishu-summary').style.display='inline-block';
     showMsg('summary','ok','完成：'+allRows.length+' 条记录，'+Object.keys(groups).length+' 个商品');
   } catch(err){ showMsg('summary','err','处理失败：'+err.message); }
+});
+document.getElementById('btn-feishu-summary').addEventListener('click', async ()=>{
+  if(!window._summaryData) return;
+  const rows = [['包装','商品ID','商品名称','日期','消耗','总消耗']];
+  window._summaryData.forEach(r=>{ rows.push([r.pkg, String(r.id), r.name, r.date, parseFloat(r.cost), r.total?parseFloat(r.total):'']); });
+  try { await feishuOpenSheet('投放数据汇总_'+new Date().toISOString().slice(0,10), rows); }
+  catch(e){ showFeishuStatus('err', '飞书创建失败：'+e.message); }
 });
 document.getElementById('btn-download-summary').addEventListener('click',()=>{
   if(!window._summaryData) return;
@@ -358,8 +438,17 @@ async function detectDates(files){
       window['_'+tab+'Data']=flatRows;
       window['_'+tab+'Date']=targetDate;
       document.getElementById('btn-download-'+tab).style.display='inline-block';
+      document.getElementById('btn-feishu-'+tab).style.display='inline-block';
       showMsg(tab,'ok','完成：'+grouped.length+' 个规格，¥'+allRows.reduce((s,r)=>s+r.amount,0).toFixed(2));
     } catch(err){ showMsg(tab,'err','处理失败：'+err.message); }
+  });
+  document.getElementById('btn-feishu-'+tab).addEventListener('click', async ()=>{
+    const data=window['_'+tab+'Data']; if(!data) return;
+    const tabName = tab==='douyin'?'抖音':tab==='shipinhao'?'视频号':'快手';
+    const rows = [['商品ID','规格','数量','实际','箱数','成交额','总额']];
+    data.forEach(r=>{ rows.push([String(r.id||''), r.spec, r.qty, r.actual, r.box, parseFloat(r.amount), r.totalAmount?parseFloat(r.totalAmount):'']); });
+    try { await feishuOpenSheet(tabName+'订单汇总_'+(window['_'+tab+'Date']||''), rows); }
+    catch(e){ showFeishuStatus('err', '飞书创建失败：'+e.message); }
   });
   document.getElementById('btn-download-'+tab).addEventListener('click',()=>{
     const data=window['_'+tab+'Data']; if(!data) return;
@@ -368,6 +457,25 @@ async function detectDates(files){
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'订单汇总');
     XLSX.writeFile(wb,tab+'_订单汇总_'+(window['_'+tab+'Date']||'')+'.xlsx');
   });
+});
+
+// ===== 飞书设置 =====
+document.getElementById('btn-settings').addEventListener('click', ()=>{
+  document.getElementById('input-app-id').value = localStorage.getItem('feishu_app_id') || '';
+  document.getElementById('input-app-secret').value = localStorage.getItem('feishu_app_secret') || '';
+  document.getElementById('settings-modal').classList.add('show');
+});
+document.getElementById('btn-settings-cancel').addEventListener('click', ()=>{
+  document.getElementById('settings-modal').classList.remove('show');
+});
+document.getElementById('btn-settings-save').addEventListener('click', ()=>{
+  const id = document.getElementById('input-app-id').value.trim();
+  const secret = document.getElementById('input-app-secret').value.trim();
+  if(!id || !secret){ alert('请填写完整'); return; }
+  localStorage.setItem('feishu_app_id', id);
+  localStorage.setItem('feishu_app_secret', secret);
+  document.getElementById('settings-modal').classList.remove('show');
+  alert('已保存');
 });
 
 // ===== Automa 一键触发 =====
@@ -382,5 +490,19 @@ document.getElementById('btn-automa-toufang').addEventListener('click', ()=>{
   }
 });
 </script>
+<!-- 飞书设置弹窗 -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <h3>飞书应用配置</h3>
+    <label>App ID</label>
+    <input type="text" id="input-app-id" placeholder="cli_xxxxxxxxxxxx">
+    <label>App Secret</label>
+    <input type="password" id="input-app-secret" placeholder="飞书应用密钥">
+    <div class="modal-btns">
+      <button class="btn btn-secondary" id="btn-settings-cancel">取消</button>
+      <button class="btn" id="btn-settings-save">保存</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
