@@ -198,11 +198,28 @@ const COMBO_PAIRS = [
 ];
 
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis/';
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+const CORS_PROXIES = [
+  { name:'allorigins', build:(u)=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u) },
+  { name:'codetabs', build:(u)=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u) },
+  { name:'corsproxy', build:(u)=>'https://corsproxy.io/?url='+encodeURIComponent(u) },
+];
 
 async function feishuFetch(path, options){
-  const url = CORS_PROXY + encodeURIComponent(FEISHU_BASE + path);
-  return fetch(url, options);
+  const target = FEISHU_BASE + path;
+  let lastErr = null;
+  for(const proxy of CORS_PROXIES){
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(()=>controller.abort(), 15000);
+      const r = await fetch(proxy.build(target), {...options, signal:controller.signal});
+      clearTimeout(timer);
+      if(r.ok) return r;
+      lastErr = proxy.name+': HTTP '+r.status;
+    } catch(e) {
+      lastErr = proxy.name+': '+e.message;
+    }
+  }
+  throw new Error('所有代理均失败: '+lastErr);
 }
 
 async function feishuGetToken(){
