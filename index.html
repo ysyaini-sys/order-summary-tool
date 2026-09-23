@@ -60,7 +60,7 @@ td.num { text-align:right; font-family:Consolas,monospace; }
 </head>
 <body>
 <div class="header">
-  <h1>电商订单汇总工具 <a href="qianchuan.html" style="float:right;color:white;font-size:13px">千川商品分析 →</a></h1>
+  <h1>电商订单汇总工具</h1>
   <p>数据汇总 · 抖音 · 视频号 · 快手（同一页面，独立运行）</p>
 </div>
 <div class="container">
@@ -166,11 +166,12 @@ td.num { text-align:right; font-family:Consolas,monospace; }
 
 <script>
 const CANNED_IDS = ['3823309765342266082','3697193324864733221','3697191108854546926','3697171044847714581','3692684294234439935'];
-const SPECIAL_ID = '3823309765342266082';
+const SPECIAL_IDS = ['3823309765342266082','10000908591826'];
 const COMBO_PAIRS = [
   ['山葡萄原汁1箱+冰白葡萄原汁1箱320ml*12罐(到手12罐)','冰白葡萄原汁1箱320ml*6罐+山葡萄原汁1箱320ml*6瓶罐320ml*12罐(到手12罐)'],
   ['冰白葡萄原汁1箱320ml*6瓶+山葡萄原汁1箱320ml*6瓶(到手12瓶)','山葡萄原汁1箱320ml*6瓶+冰白葡萄原汁1箱320ml*6瓶(到手12瓶)']
 ];
+// 规范化规格文本：去空格、统一括号，用于组合规格模糊匹配
 function normalizeSpec(s){
   return String(s||'').replace(/\s+/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/／/g,'/');
 }
@@ -190,6 +191,7 @@ function findComboPairIdx(spec, pairedSet){
   }
   return null;
 }
+// 统一日期解析：Date对象用本地方法（不用toISOString避免UTC偏移），字符串兼容多种格式
 function parseDateVal(dv){
   if(dv instanceof Date){
     var y=dv.getFullYear(), m=String(dv.getMonth()+1).padStart(2,'0'), d=String(dv.getDate()).padStart(2,'0');
@@ -203,6 +205,8 @@ function parseDateVal(dv){
   return '';
 }
 
+// 把数据存到 localStorage，新标签页读取
+// sheets: [{name: '子表名', rows: [[...]]}]
 function openSpreadsheet(title, sheets) {
   try {
     localStorage.setItem('sheetTitle', title);
@@ -241,6 +245,7 @@ function setupUpload(tab, onFilesChanged){
   return { getFiles:()=>files };
 }
 function showMsg(tab,type,text){ document.getElementById('msg-'+tab).innerHTML='<div class="result-msg '+type+'">'+text+'</div>'; }
+// 手动解析CSV文本，所有值保持字符串，避免SheetJS把长数字ID转成Number导致精度丢失
 function parseCSVText(text){
   if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
   var rows=[], row=[], field='', inQ=false;
@@ -364,6 +369,7 @@ function getMultiplier(spec){
   if(/12[瓶罐]/.test(spec)) return 2;
   return 1;
 }
+// 视频号的规格信息在"商品属性"列，需要从中提取规格文本
 function extractSpec(attr){
   if(!attr) return '';
   var s=String(attr).trim();
@@ -385,7 +391,8 @@ async function detectDates(files){
       for(const r of rows){
         const dateCol = Object.keys(r).find(k=>/支付完成时间|订单支付时间|支付时间/i.test(k));
         if(!dateCol) continue;
-        const rowDate = parseDateVal(r[dateCol]);
+        const dv = r[dateCol];
+        const rowDate = parseDateVal(dv);
         if(rowDate) dateSet.add(rowDate);
       }
     }
@@ -416,10 +423,12 @@ async function detectDates(files){
     const targetDate = selectedDate;
     showMsg(tab,'warn','正在处理 '+targetDate+'...');
     try {
+      // 按文件独立处理，每个文件一个子表
       let perFileResults = [];
       let totalClosed = 0, grandRows = 0, grandAmount = 0;
 
       for(const f of files){
+        // Step 1: 读文件，按日期筛选，排除已关闭，按商品ID+规格分组求和
         const wb=await readFile(f);
         let fileRows=[];
         for(const sn of wb.SheetNames){
@@ -448,20 +457,26 @@ async function detectDates(files){
         }
         if(fileRows.length===0) continue;
 
+        // Step 1续: 按ID+规格分组，按ID、规格排序
         const groups={};
         for(const r of fileRows){ const k=r.id+'\u0000'+r.spec; if(!groups[k]) groups[k]={id:r.id,spec:r.spec,qty:0,amount:0}; groups[k].qty+=r.qty; groups[k].amount+=r.amount; }
         let grouped=Object.values(groups).sort((a,b)=>{ if(a.id!==b.id) return a.id<b.id?-1:1; return a.spec<b.spec?-1:1; });
 
+        // Step 3: 组合规格配对（跨商品ID，按出现顺序一对一，无配对的按普通倍率×2）
+        // 使用规范化匹配，容忍空格/括号差异
         var comboPaired=new Set(), comboIdxMap={};
         for(var pi=0;pi<COMBO_PAIRS_NORM.length;pi++){
           var pairNorm = COMBO_PAIRS_NORM[pi];
+          // 对每种组合，按数据顺序找未配对的配对项
           var matched = {};
           for(var gi=0; gi<grouped.length; gi++){
             if(comboPaired.has(gi)) continue;
             var info = findComboPairIdx(grouped[gi].spec, comboPaired);
             if(!info || info.pairIdx!==pi) continue;
+            // 这是本pair的一个规格，找对应的另一个规格
             var otherNorm = info.other;
             if(matched[otherNorm] !== undefined){
+              // 已找到配对
               var oIdx = matched[otherNorm];
               comboIdxMap[gi] = oIdx;
               comboIdxMap[oIdx] = gi;
@@ -473,11 +488,13 @@ async function detectDates(files){
             }
           }
         }
+        // Step 3续: 计算D列实际数量
         grouped.forEach((g,idx)=>{
           if(comboIdxMap[idx]!==undefined){ g.actual=g.qty+grouped[comboIdxMap[idx]].qty; }
           else { g.actual=g.qty*getMultiplier(g.spec); }
         });
 
+        // Step 4/5: 按商品ID分组，生成扁平行（A列合并、E列总箱数、F列成交额、G列总成交额）
         const idGroups={};
         grouped.forEach(g=>{ if(!idGroups[g.id]) idGroups[g.id]=[]; idGroups[g.id].push(g); });
         let flatRows=[];
@@ -489,14 +506,14 @@ async function detectDates(files){
             if(i===0){
               flatRows.push({
                 id:item.id, spec:item.spec, qty:item.qty, actual:item.actual,
-                box: id===SPECIAL_ID ? item.actual : totalBox,
+                box: SPECIAL_IDS.indexOf(id)!==-1 ? item.actual : totalBox,
                 amount:item.amount.toFixed(2),
                 totalAmount:totalAmount.toFixed(2)
               });
             } else {
               flatRows.push({
                 id:'', spec:item.spec, qty:item.qty, actual:item.actual,
-                box: id===SPECIAL_ID ? item.actual : '',
+                box: SPECIAL_IDS.indexOf(id)!==-1 ? item.actual : '',
                 amount:item.amount.toFixed(2),
                 totalAmount:''
               });
@@ -512,6 +529,7 @@ async function detectDates(files){
 
       if(perFileResults.length===0){ showMsg(tab,'err','未找到 '+targetDate+' 的有效订单（排除 '+totalClosed+' 条）'); return; }
 
+      // 主页面预览：合并所有文件结果
       let combinedFlat = [];
       perFileResults.forEach(pf=>{ combinedFlat = combinedFlat.concat(pf.flatRows); });
 
@@ -537,7 +555,8 @@ async function detectDates(files){
       pf.flatRows.forEach(r=>{ rows.push([String(r.id||''), r.spec, r.qty, r.actual, r.box, parseFloat(r.amount), r.totalAmount?parseFloat(r.totalAmount):'']); });
       return {name: pf.name, rows: rows};
     });
-    if(tab==='douyin'){
+    // 抖音和视频号都生成汇总子表
+    if(tab==='douyin'||tab==='shipinhao'){
       sheetArr.unshift(buildSummarySheet(sheets));
     }
     openSpreadsheet(tabName+'订单汇总', sheetArr);
@@ -545,7 +564,7 @@ async function detectDates(files){
   document.getElementById('btn-download-'+tab).addEventListener('click',()=>{
     const sheets=window['_'+tab+'Sheets']; if(!sheets||!sheets.length) return;
     const wb=XLSX.utils.book_new();
-    if(tab==='douyin'){
+    if(tab==='douyin'||tab==='shipinhao'){
       const sum = buildSummarySheet(sheets);
       const ws0 = XLSX.utils.aoa_to_sheet(sum.rows);
       ws0['!cols']=[{wch:10},{wch:20},{wch:18},{wch:12},{wch:16}];
@@ -560,6 +579,7 @@ async function detectDates(files){
   });
 });
 
+// 抖音汇总页（Step 8）：15个固定商品
 function buildSummarySheet(perFileResults){
   const EXCLUDE_ID = '3817189452003016710';
   const QYQ_ID = '3823309765342266082';
@@ -571,7 +591,7 @@ function buildSummarySheet(perFileResults){
     function flush(){
       if(!currentId || !groupRows.length) return;
       if(currentId===EXCLUDE_ID) return;
-      if(currentId===QYQ_ID){
+      if(SPECIAL_IDS.indexOf(currentId)!==-1){
         groupRows.forEach(r=>{
           const spec=r.spec||'';
           const box=parseFloat(r.box)||0;
@@ -637,6 +657,7 @@ function buildSummarySheet(perFileResults){
   return {name:'汇总',rows:rows};
 }
 
+// ===== Automa 一键下载 =====
 document.getElementById('btn-automa-toufang').addEventListener('click', ()=>{
   try {
     window.dispatchEvent(new CustomEvent('automa:execute-workflow', {
