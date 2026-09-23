@@ -16,18 +16,16 @@ body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#f5f7f
 .btn-orange { background:#e67e22; }
 .btn-orange:hover { background:#d35400; }
 .table-wrap { background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.08); overflow:auto; max-height:calc(100vh - 70px); }
-table { width:100%; border-collapse:collapse; font-size:13px; }
-th { background:#4472C4; color:#fff; padding:9px 10px; text-align:center; font-weight:500; position:sticky; top:0; z-index:10; cursor:pointer; user-select:none; white-space:nowrap; }
-th:hover { background:#36569e; }
-th .arrow { font-size:10px; margin-left:3px; opacity:.7; }
-td { padding:7px 10px; border:1px solid #e0e6ed; text-align:center; min-width:60px; }
-td[contenteditable="true"]:focus { outline:2px solid #4472C4; background:#f0f5ff; }
+table { border-collapse:collapse; font-size:13px; }
+th { background:#4472C4; color:#fff; padding:8px 10px; text-align:center; font-weight:600; position:sticky; top:0; z-index:10; border:1px solid #3a5a8c; white-space:nowrap; }
+td { padding:6px 10px; border:1px solid #e0e6ed; text-align:center; vertical-align:middle; }
+td.col-id { font-family:Consolas,Monaco,monospace; text-align:center; white-space:nowrap; }
+td.col-num { text-align:right; font-family:Consolas,Monaco,monospace; white-space:nowrap; }
+td.col-text { text-align:left; }
+td[contenteditable="true"]:focus { outline:2px solid #4472C4; background:#e8f0fe; }
 td[contenteditable="true"]:hover { background:#f8fafc; }
-tr:nth-child(even) td { background:#f8fafc; }
+tr:nth-child(even) td { background:#fafbfc; }
 tr:nth-child(even) td[contenteditable="true"]:focus { background:#e8f0fe; }
-td.num { text-align:right; font-family:Consolas,monospace; }
-.row-del { color:#e74c3c; cursor:pointer; font-weight:bold; padding:0 6px; }
-.row-del:hover { color:#c0392b; }
 .hint { font-size:11px; color:#999; margin-top:8px; }
 .empty { text-align:center; color:#999; padding:40px; font-size:14px; }
 </style>
@@ -45,8 +43,15 @@ td.num { text-align:right; font-family:Consolas,monospace; }
 <p class="hint">点击单元格直接编辑 · 点击表头排序 · Tab键切换下一格</p>
 <script>
 var data = [];
+var tableType = '';
 var sortCol = -1;
 var sortAsc = true;
+var SPECIAL_ID = '3823309765342266082';
+
+var COL_WIDTHS = {
+  summary: [80, 180, 360, 100, 120, 120],
+  orders:  [180, 360, 90, 90, 90, 110, 110]
+};
 
 function init() {
   try {
@@ -60,41 +65,113 @@ function init() {
     document.getElementById('tbl').innerHTML = '<tr><td class="empty">没有数据，请回到主页面先汇总</td></tr>';
     return;
   }
+
+  var header = data[0].join('|');
+  if (header.indexOf('包装') !== -1 && header.indexOf('商品ID') !== -1) {
+    tableType = 'summary';
+  } else {
+    tableType = 'orders';
+  }
+
   render();
+}
+
+function getColClass(c, header) {
+  if (tableType === 'summary') {
+    if (c === 0) return 'col-text';
+    if (c === 1) return 'col-id';
+    if (c === 2) return 'col-text';
+    return 'col-num';
+  } else {
+    if (c === 0) return 'col-id';
+    if (c === 1) return 'col-text';
+    return 'col-num';
+  }
+}
+
+function calcRowspan(r, c) {
+  if (data[r][c] === '' || data[r][c] === null || data[r][c] === undefined) return 0;
+  var span = 1;
+  for (var i = r + 1; i < data.length; i++) {
+    var v = data[i][c];
+    if (v === '' || v === null || v === undefined) span++;
+    else break;
+  }
+  return span;
+}
+
+function shouldMerge(col, r) {
+  if (tableType === 'summary') {
+    return [0, 1, 2, 5].indexOf(col) !== -1;
+  } else {
+    if (col === 4) {
+      var idVal = data[r][0];
+      for (var rr = r; rr >= 1; rr--) {
+        if (data[rr][0] !== '' && data[rr][0] !== null) { idVal = data[rr][0]; break; }
+      }
+      if (String(idVal) === SPECIAL_ID) return false;
+    }
+    return [0, 4, 6].indexOf(col) !== -1;
+  }
+}
+
+function formatCell(v, colClass) {
+  if (v === '' || v === null || v === undefined) return ' ';
+  if (colClass === 'col-num' && typeof v === 'number') {
+    return v.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+  return String(v);
 }
 
 function render() {
   var cols = data[0].length;
+  var widths = COL_WIDTHS[tableType] || [];
+
   var html = '<thead><tr>';
   for (var c = 0; c < cols; c++) {
     var arrow = '';
     if (sortCol === c) arrow = sortAsc ? ' ▲' : ' ▼';
-    html += '<th onclick="sortBy(' + c + ')">' + (data[0][c] === '' ? ' ' : data[0][c]) + '<span class="arrow">' + arrow + '</span></th>';
+    html += '<th onclick="sortBy(' + c + ')">' + (data[0][c] === '' ? ' ' : data[0][c]) + '<span style="font-size:10px;opacity:.7">' + arrow + '</span></th>';
   }
-  html += '<th style="width:40px;"></th>';
+  html += '<th style="width:36px;position:sticky;right:0;background:#4472C4;"></th>';
   html += '</tr></thead><tbody>';
+
   for (var r = 1; r < data.length; r++) {
-    html += '<tr data-row="' + r + '">';
+    html += '<tr>';
     for (var c = 0; c < cols; c++) {
+      var colClass = getColClass(c, data[0]);
       var v = data[r][c];
-      var isNum = typeof v === 'number';
-      var display = isNum ? v.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : (v === '' ? ' ' : v);
-      html += '<td class="' + (isNum ? 'num' : '') + '" contenteditable="true" data-row="' + r + '" data-col="' + c + '" data-num="' + (isNum ? 1 : 0) + '">' + display + '</td>';
+      var display = formatCell(v, colClass);
+
+      var rowspan = '';
+      if (shouldMerge(c, r)) {
+        var rs = calcRowspan(r, c);
+        if (rs > 1) rowspan = ' rowspan="' + rs + '"';
+        else if (rs === 0) {
+          continue;
+        }
+      }
+
+      html += '<td class="' + colClass + '" contenteditable="true" data-row="' + r + '" data-col="' + c + '"' + rowspan + '>' + display + '</td>';
     }
-    html += '<td><span class="row-del" onclick="delRow(' + r + ')">✕</span></td>';
+    html += '<td style="text-align:center;cursor:pointer;color:#e74c3c;" onclick="delRow(' + r + ')">✕</td>';
     html += '</tr>';
   }
   html += '</tbody>';
   document.getElementById('tbl').innerHTML = html;
 
-  var cells = document.querySelectorAll('td[contenteditable]');
-  cells.forEach(function(td) {
+  var ths = document.querySelectorAll('thead th');
+  for (var i = 0; i < cols && i < widths.length; i++) {
+    ths[i].style.minWidth = widths[i] + 'px';
+  }
+
+  document.querySelectorAll('td[contenteditable]').forEach(function(td) {
     td.addEventListener('blur', function() {
       var r = parseInt(this.dataset.row);
       var c = parseInt(this.dataset.col);
-      var isNum = this.dataset.num === '1';
       var raw = this.textContent.trim();
-      if (isNum) {
+      var colClass = this.className;
+      if (colClass.indexOf('col-num') !== -1) {
         var n = parseFloat(raw.replace(/,/g, ''));
         data[r][c] = isNaN(n) ? raw : n;
       } else {
@@ -122,27 +199,22 @@ function moveFocus(td, back) {
     if (prevRow) prevRow.focus();
   } else if (target) {
     target.focus();
-    if (document.createRange) {
-      var range = document.createRange();
-      range.selectNodeContents(target);
-      range.collapse(false);
-      var sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
+    var range = document.createRange();
+    range.selectNodeContents(target);
+    range.collapse(false);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
   }
 }
 
 function sortBy(col) {
   if (sortCol === col) sortAsc = !sortAsc;
   else { sortCol = col; sortAsc = true; }
-
   var bodyRows = data.slice(1);
   bodyRows.sort(function(a, b) {
     var va = a[col], vb = b[col];
-    if (typeof va === 'number' && typeof vb === 'number') {
-      return sortAsc ? va - vb : vb - va;
-    }
+    if (typeof va === 'number' && typeof vb === 'number') return sortAsc ? va - vb : vb - va;
     return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
   });
   data = [data[0]].concat(bodyRows);
@@ -171,9 +243,8 @@ function getTextData() {
   if (active && active.dataset && active.dataset.row) {
     var r = parseInt(active.dataset.row);
     var c = parseInt(active.dataset.col);
-    var isNum = active.dataset.num === '1';
     var raw = active.textContent.trim();
-    if (isNum) {
+    if (active.className.indexOf('col-num') !== -1) {
       var n = parseFloat(raw.replace(/,/g, ''));
       data[r][c] = isNaN(n) ? raw : n;
     } else {
