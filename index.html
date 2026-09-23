@@ -174,7 +174,7 @@ const COMBO_PAIRS = [
   ['冰白葡萄原汁1箱320ml*6瓶+山葡萄原汁1箱320ml*6瓶(到手12瓶)','山葡萄原汁1箱320ml*6瓶+冰白葡萄原汁1箱320ml*6瓶(到手12瓶)']
 ];
 
-// 复制表格数据为TSV并打开飞书
+// 复制表格数据为TSV，触发Automa自动打开飞书并粘贴
 async function copyAndOpenFeishu(title, rows){
   const tsv = rows.map(r => r.join('\t')).join('\n');
   try {
@@ -187,8 +187,15 @@ async function copyAndOpenFeishu(title, rows){
     document.execCommand('copy');
     document.body.removeChild(ta);
   }
-  showFeishuStatus('ok', '数据已复制！正在打开飞书，粘贴即可（Ctrl+V）');
-  setTimeout(()=>{ window.open('https://feishu.cn/drive/home/', '_blank'); }, 500);
+  showFeishuStatus('loading', '正在自动打开飞书并粘贴数据...');
+  try {
+    window.dispatchEvent(new CustomEvent('automa:execute-workflow', {
+      detail: { publicId: 'feishu-paste', data: tsv }
+    }));
+    showFeishuStatus('ok', '已触发自动流程，请等待飞书表格打开...');
+  } catch(e) {
+    showFeishuStatus('err', '触发失败：'+e.message+'，请确认 Automa 已导入"飞书粘贴汇总数据"工作流');
+  }
 }
 
 function showFeishuStatus(type, text){
