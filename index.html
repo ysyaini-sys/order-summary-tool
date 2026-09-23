@@ -378,7 +378,7 @@ async function detectDates(files){
           const items=idGroups[id];
           const totalAmount=items.reduce((s,x)=>s+x.amount,0);
           items.forEach((item,i)=>{
-            if(i===0){ if(id===SPECIAL_ID){ flatRows.push({id:item.id,spec:item.spec,qty:item.qty,actual:item.actual,box:item.actual,amount:item.amount.toFixed(2),totalAmount:''}); } else { flatRows.push({id:item.id,spec:item.spec,qty:item.qty,actual:item.actual,box:items.reduce((s,x)=>s+x.actual,0),amount:item.amount.toFixed(2),totalAmount:totalAmount.toFixed(2)}); } }
+            if(i===0){ if(id===SPECIAL_ID){ flatRows.push({id:item.id,spec:item.spec,qty:item.qty,actual:item.actual,box:item.actual,amount:item.amount.toFixed(2),totalAmount:totalAmount.toFixed(2)}); } else { flatRows.push({id:item.id,spec:item.spec,qty:item.qty,actual:item.actual,box:items.reduce((s,x)=>s+x.actual,0),amount:item.amount.toFixed(2),totalAmount:totalAmount.toFixed(2)}); } }
             else { if(id===SPECIAL_ID){ flatRows.push({id:'',spec:item.spec,qty:item.qty,actual:item.actual,box:item.actual,amount:item.amount.toFixed(2),totalAmount:''}); } else { flatRows.push({id:'',spec:item.spec,qty:item.qty,actual:item.actual,box:'',amount:item.amount.toFixed(2),totalAmount:''}); } }
           });
         }
