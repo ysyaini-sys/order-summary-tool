@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在线表格</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/dist/plugins/css/pluginsCss.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/dist/plugins/plugins.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/css/luckysheet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/assets/iconfont/iconfont.css">
+<script src="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/dist/plugins/js/plugin.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/dist/luckysheet.umd.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; }
+#luckysheet { width:100%; height:100%; }
+.loading { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); font-family:-apple-system,"Microsoft YaHei",sans-serif; color:#666; font-size:16px; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">正在加载表格...</div>
+<div id="luckysheet" style="display:none;"></div>
+<script>
+(function() {
+  let rows = [];
+  let title = '在线表格';
+  try {
+    rows = JSON.parse(localStorage.getItem('sheetRows') || '[]');
+    title = localStorage.getItem('sheetTitle') || '在线表格';
+  } catch(e) {}
+  document.title = title;
+
+  if (!rows.length) {
+    document.getElementById('loading').innerHTML = '没有数据，请回到主页面先汇总数据';
+    return;
+  }
+
+  const celldata = [];
+  rows.forEach(function(row, r) {
+    row.forEach(function(val, c) {
+      if (val === '' || val === null || val === undefined) return;
+      const isNum = typeof val === 'number';
+      celldata.push({
+        r: r, c: c,
+        v: {
+          v: val,
+          m: isNum ? val.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : String(val),
+          ct: { fa: isNum ? '#,##0.00' : 'General', t: isNum ? 'n' : 'g' }
+        }
+      });
+    });
+  });
+
+  const sheetData = [{
+    name: '汇总',
+    color: '',
+    status: 1,
+    order: 0,
+    data: [],
+    config: {},
+    index: 0,
+    row: rows.length,
+    column: rows[0].length,
+    celldata: celldata
+  }];
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('luckysheet').style.display = 'block';
+
+  luckysheet.create({
+    container: 'luckysheet',
+    lang: 'zh',
+    title: title,
+    showinfobar: true,
+    allowEdit: true,
+    showsheetbarConfig: { add: false, menu: true, sheetList: true },
+    showtoolbarConfig: {
+      undo: true, redo: true, print: true, paintFormat: true,
+      currencyFormat: true, percentageFormat: true, numberDecrease: true, numberIncrease: true,
+      moreFormats: true, font: true, fontSize: true, bold: true, italic: true,
+      strikeThrough: true, underline: true, textColor: true, fillColor: true,
+      border: true, mergeCell: true, horizontalAlign: true, verticalAlign: true,
+      textWrap: true, freeze: true, sortAndFilter: true, chart: true,
+      pivotTable: false, share: false, conditionalFormat: true, screenshot: true,
+      splitColumn: true, insertFunction: true, insertImage: false, comment: false, free: false
+    },
+    data: sheetData
+  });
+})();
+</script>
+</body>
+</html>
