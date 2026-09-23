@@ -5,12 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>电商订单汇总工具</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/dist/plugins/css/pluginsCss.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/dist/plugins/plugins.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/css/luckysheet.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/assets/iconfont/iconfont.css">
-<script src="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/dist/plugins/js/plugin.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/luckysheet@2.1.13/dist/luckysheet.umd.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background:#f5f7fa; color:#333; height:100vh; overflow:hidden; display:flex; flex-direction:column; }
@@ -58,15 +52,6 @@ td { padding:3px 6px; border:1px solid #e0e6ed; text-align:center; }
 tr:nth-child(even) td { background:#f8fafc; }
 td.num { text-align:right; font-family:Consolas,monospace; }
 .table-wrap { overflow:auto; flex:1; }
-/* 全屏表格弹窗 */
-.sheet-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:1000; background:#f5f7fa; flex-direction:column; }
-.sheet-modal.show { display:flex; }
-.sheet-modal-bar { background:#fff; padding:8px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #e0e6ed; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,.08); }
-.sheet-modal-bar .title { font-size:14px; font-weight:600; color:#333; }
-.sheet-modal-bar .actions { margin-left:auto; display:flex; gap:8px; }
-.sheet-modal-bar .btn-close { background:#f0f0f0; color:#666; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:12px; }
-.sheet-modal-bar .btn-close:hover { background:#e0e0e0; }
-.sheet-container { flex:1; }
 @media (max-width:768px){
   body { overflow:auto; height:auto; }
   .container { grid-template-columns:1fr; grid-template-rows:auto; }
@@ -97,7 +82,6 @@ td.num { text-align:right; font-family:Consolas,monospace; }
       <button class="btn btn-sheet" id="btn-sheet-summary" style="display:none;">📊 在线表格</button>
     </div>
     <div id="msg-summary"></div>
-    <div id="sheet-status-summary"></div>
     <div class="result-box" id="result-summary">
       <div class="stats" id="stats-summary"></div>
       <div class="table-wrap"><table id="table-summary"></table></div>
@@ -180,17 +164,6 @@ td.num { text-align:right; font-family:Consolas,monospace; }
   </div>
 </div>
 
-<!-- 全屏在线表格弹窗 -->
-<div class="sheet-modal" id="sheet-modal">
-  <div class="sheet-modal-bar">
-    <span class="title" id="sheet-modal-title">在线表格</span>
-    <div class="actions">
-      <button class="btn-close" id="btn-close-sheet">✕ 关闭</button>
-    </div>
-  </div>
-  <div class="sheet-container" id="luckysheet"></div>
-</div>
-
 <script>
 const CANNED_IDS = ['3823309765342266082','3697193324864733221','3697191108854546926','3697171044847714581','3692684294234439935'];
 const SPECIAL_ID = '3823309765342266082';
@@ -199,70 +172,14 @@ const COMBO_PAIRS = [
   ['冰白葡萄原汁1箱320ml*6瓶+山葡萄原汁1箱320ml*6瓶(到手12瓶)','山葡萄原汁1箱320ml*6瓶+冰白葡萄原汁1箱320ml*6瓶(到手12瓶)']
 ];
 
-// ===== 内嵌在线表格 =====
-function rowsToLuckysheet(rows) {
-  const celldata = [];
-  rows.forEach((row, r) => {
-    row.forEach((val, c) => {
-      if (val === '' || val === null || val === undefined) return;
-      const isNum = typeof val === 'number';
-      celldata.push({
-        r: r, c: c,
-        v: {
-          v: val,
-          m: isNum ? val.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : String(val),
-          ct: { fa: isNum ? '#,##0.00' : 'General', t: isNum ? 'n' : 'g' }
-        }
-      });
-    });
-  });
-  return [{
-    name: '汇总',
-    color: '',
-    status: 1,
-    order: 0,
-    data: [],
-    config: {},
-    index: 0,
-    row: rows.length,
-    column: rows[0].length,
-    celldata: celldata
-  }];
-}
-
-let _luckysheetInited = false;
 function openSpreadsheet(title, rows) {
-  document.getElementById('sheet-modal-title').textContent = title;
-  document.getElementById('sheet-modal').classList.add('show');
-  const data = rowsToLuckysheet(rows);
-  // 等 DOM 显示后再初始化
-  setTimeout(() => {
-    if (_luckysheetInited) {
-      luckysheet.destroy();
-      _luckysheetInited = false;
-    }
-    luckysheet.create({
-      container: 'luckysheet',
-      lang: 'zh',
-      showinfobar: false,
-      showsheetbarConfig: { add: false, menu: true, sheetList: true },
-      showtoolbarConfig: { undo: true, redo: true, print: false, paintFormat: true, currencyFormat: true, percentageFormat: true, numberDecrease: true, numberIncrease: true, moreFormats: true, font: true, fontSize: true, bold: true, italic: true, strikeThrough: true, underline: true, textColor: true, fillColor: true, border: true, mergeCell: true, horizontalAlign: true, verticalAlign: true, textWrap: true, freeze: true, sortAndFilter: true, chart: true, pivotTable: false, share: false, conditionalFormat: true, screenshot: false, splitColumn: false, insertFunction: true, insertImage: false, comment: false, free: false },
-      data: data
-    });
-    _luckysheetInited = true;
-  }, 100);
-}
-
-document.getElementById('btn-close-sheet').addEventListener('click', () => {
-  document.getElementById('sheet-modal').classList.remove('show');
-  if (_luckysheetInited) { luckysheet.destroy(); _luckysheetInited = false; }
-});
-
-function showSheetStatus(tab, type, text){
-  const el = document.getElementById('sheet-status-'+tab);
-  if(!el) return;
-  el.innerHTML = '<div class="result-msg '+type+'">'+text+'</div>';
-  if(type==='ok') setTimeout(()=>{el.innerHTML='';}, 5000);
+  try {
+    localStorage.setItem('sheetTitle', title);
+    localStorage.setItem('sheetRows', JSON.stringify(rows));
+    window.open('sheet.html', '_blank');
+  } catch(e) {
+    alert('打开表格失败：' + e.message);
+  }
 }
 
 function setupUpload(tab, onFilesChanged){
@@ -486,7 +403,6 @@ async function detectDates(files){
   });
 });
 
-// ===== Automa 一键下载 =====
 document.getElementById('btn-automa-toufang').addEventListener('click', ()=>{
   try {
     window.dispatchEvent(new CustomEvent('automa:execute-workflow', {
