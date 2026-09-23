@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>电商订单汇总工具</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/cfb-1.2.2/package/dist/cfb.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background:#f5f7fa; color:#333; height:100vh; overflow:hidden; display:flex; flex-direction:column; }
@@ -60,7 +61,7 @@ td.num { text-align:right; font-family:Consolas,monospace; }
 </head>
 <body>
 <div class="header">
-  <h1>电商订单汇总工具 <a href="qianchuan.html" target="_blank" rel="noopener noreferrer" style="float:right;color:white;font-size:13px">千川商品分析 ↗</a></h1>
+  <h1>电商订单汇总工具</h1>
   <p>数据汇总 · 抖音 · 视频号 · 快手（同一页面，独立运行）</p>
 </div>
 <div class="container">
@@ -276,14 +277,13 @@ function parseCSVText(text){
 
 // ===== 快手加密xlsx浏览器端解密 (Agile Encryption) =====
 async function decryptAgileXlsx(buf, password){
-  // Read OLE2 structure
-  const cfb = XLSX.CFB || CFB;
-  const ole = cfb.read(buf, {type:'array'});
+  // Read OLE2 structure using CFB library
+  var ole = CFB.read(buf, {type:'array'});
   
-  // Extract EncryptionInfo
-  const encEntry = ole.FileIndex.find(f => f.name === 'EncryptionInfo');
-  if(!encEntry) throw new Error('不是加密文件');
-  const encInfoRaw = cfb.find(ole, 'EncryptionInfo').content;
+  // Extract EncryptionInfo stream
+  var encEntry = CFB.find(ole, 'EncryptionInfo');
+  if(!encEntry) throw new Error('文件未加密或格式不支持');
+  var encInfoRaw = encEntry.content;
   
   // Skip 8-byte header (version + flags), parse XML
   const encInfoXml = new TextDecoder('utf-8').decode(encInfoRaw.slice(8));
@@ -337,9 +337,9 @@ async function decryptAgileXlsx(buf, password){
   if(!match) throw new Error('密码错误');
   
   // Decrypt EncryptedPackage
-  const pkgEntry = cfb.find(ole, 'EncryptedPackage');
+  var pkgEntry = CFB.find(ole, 'EncryptedPackage');
   if(!pkgEntry) throw new Error('找不到加密数据');
-  const pkgData = pkgEntry.content;
+  var pkgData = new Uint8Array(pkgEntry.content);
   
   // First 8 bytes = unencrypted size (LE uint64)
   const dataSize = Number(new DataView(pkgData.buffer, pkgData.byteOffset).getBigUint64(0, true));
@@ -541,7 +541,7 @@ async function detectDates(files, platform){
       if(dates.length===1){ area.innerHTML = '📅 <span class="date-badge">'+dates[0]+'</span>'; }
       else { let opts = dates.map(d=>'<option value="'+d+'"'+(d===selectedDate?' selected':'')+'>'+d+'</option>').join(''); area.innerHTML = '📅 <select id="date-select-'+tab+'">'+opts+'</select>'; document.getElementById('date-select-'+tab).addEventListener('change', e=>{ selectedDate = e.target.value; }); }
       btn.disabled = false;
-    } catch(err){ area.innerHTML = '<span style="color:#c62828;font-size:12px;">日期识别失败</span>'; }
+    } catch(err){ area.innerHTML = '<span style="color:#c62828;font-size:12px;">'+(err.message||'日期识别失败')+'</span>'; }
   });
   document.getElementById('btn-process-'+tab).addEventListener('click', async ()=>{
     const files = uploads[tab].getFiles();
