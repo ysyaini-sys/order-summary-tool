@@ -574,10 +574,11 @@ function buildSummarySheet(perFileResults){
       }
       let flavorRow=null;
       for(let i=0;i<groupRows.length;i++){ if(!isComboSpec(groupRows[i].spec)){ flavorRow=groupRows[i]; break; } }
-      if(!flavorRow) return;
+      if(!flavorRow) flavorRow=groupRows[0];
       const spec=flavorRow.spec||'';
       let flavor=null;
-      for(let j=0;j<FLAVORS.length;j++){ if(spec.indexOf(FLAVORS[j])!==-1){ flavor=FLAVORS[j]; break; } }
+      for(let j=0;j<FLAVORS.length;j++){ if(spec.indexOf(FLAVORS[j])===0){ flavor=FLAVORS[j]; break; } }
+      if(!flavor){ for(let j=0;j<FLAVORS.length;j++){ if(spec.indexOf(FLAVORS[j])!==-1){ flavor=FLAVORS[j]; break; } } }
       if(!flavor) return;
       const isCanned=spec.indexOf('罐')!==-1;
       const store=isCanned?'官方店':'饮品店';
