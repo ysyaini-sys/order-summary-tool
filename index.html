@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电商订单汇总工具</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background:#f5f7fa; color:#333; }
+.header { background:linear-gradient(135deg,#4472C4,#2f5597); color:#fff; padding:24px 32px; }
+.header h1 { font-size:22px; font-weight:600; }
+.header p { font-size:13px; opacity:.85; margin-top:4px; }
+.tabs { display:flex; background:#fff; border-bottom:2px solid #e8ecf1; padding:0 32px; overflow-x:auto; }
+.tab { padding:14px 24px; cursor:pointer; font-size:14px; color:#666; border-bottom:3px solid transparent; white-space:nowrap; transition:.2s; }
+.tab.active { color:#4472C4; border-bottom-color:#4472C4; font-weight:600; }
+.tab:hover { color:#4472C4; }
+.container { max-width:1200px; margin:24px auto; padding:0 24px; }
+.panel { display:none; }
+.panel.active { display:block; }
+.card { background:#fff; border-radius:10px; padding:24px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.card h2 { font-size:16px; margin-bottom:16px; color:#2f5597; }
+.upload-zone { border:2px dashed #c5d0e0; border-radius:8px; padding:32px; text-align:center; cursor:pointer; transition:.2s; }
+.upload-zone:hover, .upload-zone.dragover { border-color:#4472C4; background:#f0f5ff; }
+.upload-zone p { color:#888; font-size:14px; }
+.upload-zone .icon { font-size:36px; margin-bottom:8px; }
+.file-list { margin-top:12px; }
+.file-item { background:#f0f5ff; padding:8px 14px; border-radius:6px; margin-top:6px; font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+.file-item .rm { cursor:pointer; color:#e74c3c; font-weight:bold; }
+.controls { display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-top:16px; }
+.controls label { font-size:14px; color:#555; }
+.controls input[type=date] { padding:8px 12px; border:1px solid #d0d7e2; border-radius:6px; font-size:14px; }
+.btn { background:#4472C4; color:#fff; border:none; padding:10px 24px; border-radius:6px; cursor:pointer; font-size:14px; font-weight:500; transition:.2s; }
+.btn:hover { background:#36569e; }
+.btn:disabled { background:#a0b4d4; cursor:not-allowed; }
+.btn-secondary { background:#fff; color:#4472C4; border:1px solid #4472C4; }
+.btn-secondary:hover { background:#f0f5ff; }
+.result-msg { padding:12px 16px; border-radius:6px; margin-top:16px; font-size:14px; }
+.result-msg.ok { background:#e8f5e9; color:#2e7d32; }
+.result-msg.err { background:#fdecea; color:#c62828; }
+.result-msg.warn { background:#fff8e1; color:#f57f17; }
+table { width:100%; border-collapse:collapse; margin-top:16px; font-size:13px; }
+th { background:#4472C4; color:#fff; padding:10px 12px; text-align:center; font-weight:500; }
+td { padding:8px 12px; border:1px solid #e0e6ed; text-align:center; }
+tr:nth-child(even) td { background:#f8fafc; }
+td.num { text-align:right; font-family:Consolas,monospace; }
+.table-wrap { overflow-x:auto; margin-top:16px; }
+.stats { display:flex; gap:24px; margin-top:16px; flex-wrap:wrap; }
+.stat { background:#f0f5ff; padding:12px 20px; border-radius:8px; }
+.stat .label { font-size:12px; color:#888; }
+.stat .value { font-size:20px; font-weight:600; color:#2f5597; margin-top:2px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>电商订单汇总工具</h1>
+  <p>数据汇总 · 抖音订单 · 视频号订单 · 快手订单</p>
+</div>
+<div class="tabs">
+  <div class="tab active" data-tab="summary">数据汇总</div>
+  <div class="tab" data-tab="douyin">抖音订单</div>
+  <div class="tab" data-tab="shipinhao">视频号订单</div>
+  <div class="tab" data-tab="kuaishou">快手订单</div>
+</div>
+<div class="container">
+  <div class="panel active" id="panel-summary">
+    <div class="card">
+      <h2>投放数据汇总（乘方推广/全域推广）</h2>
+      <div class="upload-zone" id="upload-summary">
+        <div class="icon">📊</div>
+        <p>点击或拖拽上传多个 .xlsx 文件</p>
+        <p style="font-size:12px;margin-top:4px;">自动剔除"全部"汇总行，按商品ID分组汇总消耗</p>
+      </div>
+      <div class="file-list" id="file-list-summary"></div>
+      <div class="controls">
+        <button class="btn" id="btn-process-summary">开始汇总</button>
+        <button class="btn btn-secondary" id="btn-download-summary" style="display:none;">下载 Excel</button>
+      </div>
+      <div id="msg-summary"></div>
+    </div>
+    <div class="card" id="result-summary" style="display:none;">
+      <h2>汇总结果</h2>
+      <div class="stats" id="stats-summary"></div>
+      <div class="table-wrap"><table id="table-summary"></table></div>
+    </div>
+  </div>
+  <div class="panel" id="panel-douyin">
+    <div class="card">
+      <h2>抖音订单按商品汇总</h2>
+      <div class="upload-zone" id="upload-douyin">
+        <div class="icon">🛒</div>
+        <p>点击或拖拽上传 .csv / .xlsx 订单文件</p>
+        <p style="font-size:12px;margin-top:4px;">多文件按文件名区分，自动排除已关闭订单</p>
+      </div>
+      <div class="file-list" id="file-list-douyin"></div>
+      <div class="controls">
+        <label>选择日期：</label>
+        <input type="date" id="date-douyin">
+        <button class="btn" id="btn-process-douyin">开始汇总</button>
+        <button class="btn btn-secondary" id="btn-download-douyin" style="display:none;">下载 Excel</button>
+      </div>
+      <div id="msg-douyin"></div>
+    </div>
+    <div class="card" id="result-douyin" style="display:none;">
+      <h2>汇总结果</h2>
+      <div class="stats" id="stats-douyin"></div>
+      <div class="table-wrap"><table id="table-douyin"></table></div>
+    </div>
+  </div>
+  <div class="panel" id="panel-shipinhao">
+    <div class="card">
+      <h2>视频号订单按商品汇总</h2>
+      <div class="upload-zone" id="upload-shipinhao">
+        <div class="icon">🎬</div>
+        <p>点击或拖拽上传 .csv / .xlsx 订单文件</p>
+        <p style="font-size:12px;margin-top:4px;">多文件按文件名区分，自动排除已关闭订单</p>
+      </div>
+      <div class="file-list" id="file-list-shipinhao"></div>
+      <div class="controls">
+        <label>选择日期：</label>
+        <input type="date" id="date-shipinhao">
+        <button class="btn" id="btn-process-shipinhao">开始汇总</button>
+        <button class="btn btn-secondary" id="btn-download-shipinhao" style="display:none;">下载 Excel</button>
+      </div>
+      <div id="msg-shipinhao"></div>
+    </div>
+    <div class="card" id="result-shipinhao" style="display:none;">
+      <h2>汇总结果</h2>
+      <div class="stats" id="stats-shipinhao"></div>
+      <div class="table-wrap"><table id="table-shipinhao"></table></div>
+    </div>
+  </div>
+  <div class="panel" id="panel-kuaishou">
+    <div class="card">
+      <h2>快手订单按商品汇总</h2>
+      <div class="upload-zone" id="upload-kuaishou">
+        <div class="icon">⚡</div>
+        <p>点击或拖拽上传 .xlsx 订单文件（需先解密）</p>
+        <p style="font-size:12px;margin-top:4px;">快手加密文件请先在本地解密后再上传</p>
+      </div>
+      <div class="file-list" id="file-list-kuaishou"></div>
+      <div class="controls">
+        <label>选择日期：</label>
+        <input type="date" id="date-kuaishou">
+        <button class="btn" id="btn-process-kuaishou">开始汇总</button>
+        <button class="btn btn-secondary" id="btn-download-kuaishou" style="display:none;">下载 Excel</button>
+      </div>
+      <div id="msg-kuaishou"></div>
+    </div>
+    <div class="card" id="result-kuaishou" style="display:none;">
+      <h2>汇总结果</h2>
+      <div class="stats" id="stats-kuaishou"></div>
+      <div class="table-wrap"><table id="table-kuaishou"></table></div>
+    </div>
+  </div>
+</div>
+<script>
+const CANNED_IDS = ['3823309765342266082','3697193324864733221','3697191108854546926','3697171044847714581','3692684294234439935'];
+const SPECIAL_ID = '3823309765342266082';
+const COMBO_PAIRS = [
+  ['山葡萄原汁1箱+冰白葡萄原汁1箱320ml*12罐(到手12罐)','冰白葡萄原汁1箱320ml*6罐+山葡萄原汁1箱320ml*6瓶罐320ml*12罐(到手12罐)'],
+  ['冰白葡萄原汁1箱320ml*6瓶+山葡萄原汁1箱320ml*6瓶(到手12瓶)','山葡萄原汁1箱320ml*6瓶+冰白葡萄原汁1箱320ml*6瓶(到手12瓶)']
+];
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+  });
+});
+function setupUpload(tab){
+  const zone = document.getElementById('upload-'+tab);
+  const list = document.getElementById('file-list-'+tab);
+  let files = [];
+  zone.addEventListener('click',()=>{
+    const inp = document.createElement('input');
+    inp.type='file'; inp.multiple=true;
+    inp.accept = tab==='summary' ? '.xlsx' : '.csv,.xlsx';
+    inp.onchange = e=>{ addFiles(e.target.files); };
+    inp.click();
+  });
+  zone.addEventListener('dragover',e=>{ e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
+  zone.addEventListener('drop',e=>{ e.preventDefault(); zone.classList.remove('dragover'); addFiles(e.dataTransfer.files); });
+  function addFiles(fl){
+    for(const f of fl){
+      files.push(f);
+      const div = document.createElement('div');
+      div.className='file-item';
+      div.innerHTML = '<span>📄 '+f.name+' ('+(f.size/1024).toFixed(1)+' KB)</span><span class="rm">✕</span>';
+      div.querySelector('.rm').onclick=()=>{ files=files.filter(x=>x!==f); div.remove(); };
+      list.appendChild(div);
+    }
+  }
+  return { getFiles:()=>files };
+}
+const uploads = { summary:setupUpload('summary'), douyin:setupUpload('douyin'), shipinhao:setupUpload('shipinhao'), kuaishou:setupUpload('kuaishou') };
+function showMsg(tab,type,text){ document.getElementById('msg-'+tab).innerHTML='<div class="result-msg '+type+'">'+text+'</div>'; }
+function readFile(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{ try{ resolve(XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true})); }catch(err){reject(err);} };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+function sheetToJson(ws){ return XLSX.utils.sheet_to_json(ws,{defval:''}); }
+
+document.getElementById('btn-process-summary').addEventListener('click', async ()=>{
+  const files = uploads.summary.getFiles();
+  if(files.length===0){ showMsg('summary','err','请先上传文件'); return; }
+  showMsg('summary','warn','正在处理...');
+  try {
+    let allRows=[], fileCount=files.length;
+    for(const f of files){
+      const wb = await readFile(f);
+      for(const sn of wb.SheetNames){
+        const rows = sheetToJson(wb.Sheets[sn]);
+        for(const r of rows){
+          const dateCol = Object.keys(r).find(k=>/日期|时间/i.test(k));
+          if(!dateCol) continue;
+          const dv = String(r[dateCol]).trim();
+          if(dv==='全部'||dv==='') continue;
+          const idCol = Object.keys(r).find(k=>/商品ID|商品id/i.test(k));
+          const nameCol = Object.keys(r).find(k=>/商品名称|商品名/i.test(k));
+          const costCol = Object.keys(r).find(k=>/整体消耗|消耗/i.test(k));
+          if(!idCol||!costCol) continue;
+          allRows.push({id:String(r[idCol]).trim(), name:nameCol?String(r[nameCol]).trim():'', date:dv, cost:parseFloat(String(r[costCol]).replace(/,/g,''))||0, source:f.name});
+        }
+      }
+    }
+    if(allRows.length===0){ showMsg('summary','err','未解析到有效数据'); return; }
+    const seen=new Set(), dupes=[];
+    for(const r of allRows){ const k=r.source+'|'+r.id; if(seen.has(k)) dupes.push(r); seen.add(k); }
+    if(dupes.length>0){ showMsg('summary','err','发现 '+dupes.length+' 条重复数据，已停止处理。'); return; }
+    const groups={};
+    for(const r of allRows){ if(!groups[r.id]) groups[r.id]={id:r.id,name:r.name,total:0,dates:[]}; groups[r.id].total+=r.cost; groups[r.id].dates.push(r); }
+    let result = Object.values(groups).map(g=>({...g, pkg:CANNED_IDS.includes(g.id)?'罐装':'瓶装'}));
+    result.sort((a,b)=>{ if(a.pkg!==b.pkg) return a.pkg==='罐装'?-1:1; if(a.id!==b.id) return a.id<b.id?-1:1; return 0; });
+    let flatRows=[];
+    for(const g of result){
+      const dates = g.dates.sort((a,b)=>a.date.localeCompare(b.date));
+      dates.forEach((d,i)=>{ flatRows.push({pkg:i===0?g.pkg:'', id:i===0?g.id:'', name:i===0?g.name:'', date:d.date, cost:d.cost.toFixed(2), total:i===0?g.total.toFixed(2):''}); });
+    }
+    document.getElementById('result-summary').style.display='block';
+    document.getElementById('stats-summary').innerHTML='<div class="stat"><div class="label">文件数</div><div class="value">'+fileCount+'</div></div><div class="stat"><div class="label">总记录数</div><div class="value">'+allRows.length+'</div></div><div class="stat"><div class="label">总消耗</div><div class="value">¥'+allRows.reduce((s,r)=>s+r.cost,0).toFixed(2)+'</div></div>';
+    const tbl=document.getElementById('table-summary');
+    tbl.innerHTML='<thead><tr><th>包装</th><th>商品ID</th><th>商品名称</th><th>日期</th><th>整体消耗</th><th>总消耗</th></tr></thead>';
+    const tb=document.createElement('tbody');
+    flatRows.forEach(r=>{ tb.innerHTML+='<tr><td>'+r.pkg+'</td><td style="font-family:Consolas">'+r.id+'</td><td>'+r.name+'</td><td>'+r.date+'</td><td class="num">'+r.cost+'</td><td class="num">'+r.total+'</td></tr>'; });
+    tbl.appendChild(tb);
+    window._summaryData=flatRows;
+    document.getElementById('btn-download-summary').style.display='inline-block';
+    showMsg('summary','ok','汇总完成：'+allRows.length+' 条记录，'+Object.keys(groups).length+' 个商品');
+  } catch(err){ showMsg('summary','err','处理失败：'+err.message); }
+});
+document.getElementById('btn-download-summary').addEventListener('click',()=>{
+  if(!window._summaryData) return;
+  const ws=XLSX.utils.json_to_sheet(window._summaryData);
+  ws['!cols']=[{wch:8},{wch:24},{wch:55},{wch:12},{wch:14},{wch:14}];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'汇总');
+  XLSX.writeFile(wb,'数据汇总_'+new Date().toISOString().slice(0,10)+'.xlsx');
+});
+
+function getMultiplier(spec){
+  if(/30[瓶罐]/.test(spec)) return 5;
+  if(/24[瓶罐]/.test(spec)) return 1;
+  if(/12[瓶罐]/.test(spec)) return 2;
+  return 1;
+}
+async function processOrders(tab){
+  const files=uploads[tab].getFiles();
+  const dateInput=document.getElementById('date-'+tab);
+  if(files.length===0){ showMsg(tab,'err','请先上传文件'); return; }
+  if(!dateInput.value){ showMsg(tab,'err','请选择日期'); return; }
+  const targetDate=dateInput.value;
+  showMsg(tab,'warn','正在处理...');
+  try {
+    let allRows=[], totalClosed=0;
+    for(const f of files){
+      const wb=await readFile(f);
+      for(const sn of wb.SheetNames){
+        const rows=sheetToJson(wb.Sheets[sn]);
+        for(const r of rows){
+          const dateCol=Object.keys(r).find(k=>/支付完成时间|订单支付时间|支付时间/i.test(k));
+          const idCol=Object.keys(r).find(k=>/商品ID|商品id/i.test(k));
+          const specCol=Object.keys(r).find(k=>/商品规格|规格/i.test(k));
+          const qtyCol=Object.keys(r).find(k=>/商品数量|成交数量|数量/i.test(k));
+          const priceCol=Object.keys(r).find(k=>/商品单价|单价/i.test(k));
+          const statusCol=Object.keys(r).find(k=>/订单状态|交易状态|状态/i.test(k));
+          if(!idCol||!qtyCol) continue;
+          if(statusCol){ const st=String(r[statusCol]).trim(); if(st==='已关闭'||st==='交易关闭'||st==='已取消'){ totalClosed++; continue; } }
+          if(dateCol){
+            const dv=r[dateCol]; let rowDate='';
+            if(dv instanceof Date){ rowDate=dv.toISOString().slice(0,10); }
+            else { const s=String(dv).trim(); const m=s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); if(m) rowDate=m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0'); }
+            if(rowDate!==targetDate) continue;
+          }
+          const qty=parseFloat(String(r[qtyCol]).replace(/,/g,''))||0;
+          const price=priceCol?(parseFloat(String(r[priceCol]).replace(/,/g,''))||0):0;
+          allRows.push({id:String(r[idCol]).trim(), spec:specCol?String(r[specCol]).trim():'', qty:qty, amount:price*qty});
+        }
+      }
+    }
+    if(allRows.length===0){ showMsg(tab,'err','未找到 '+targetDate+' 的有效订单（已排除 '+totalClosed+' 条关闭订单）'); return; }
+    const groups={};
+    for(const r of allRows){ const k=r.id+'|'+r.spec; if(!groups[k]) groups[k]={id:r.id,spec:r.spec,qty:0,amount:0}; groups[k].qty+=r.qty; groups[k].amount+=r.amount; }
+    let grouped=Object.values(groups).sort((a,b)=>{ if(a.id!==b.id) return a.id<b.id?-1:1; return a.spec.localeCompare(b.spec); });
+    const usedCombo=new Set(), comboMap={};
+    for(const pair of COMBO_PAIRS){
+      for(const p of pair){
+        const found=grouped.find(g=>g.spec===p && !usedCombo.has(g.id+'|'+g.spec));
+        if(!found) continue;
+        const other=pair.find(x=>x!==p);
+        const otherFound=grouped.find(g=>g.spec===other && g.id===found.id && !usedCombo.has(g.id+'|'+g.spec));
+        if(otherFound){ comboMap[found.id+'|'+found.spec]=otherFound.id+'|'+otherFound.spec; usedCombo.add(found.id+'|'+found.spec); usedCombo.add(otherFound.id+'|'+otherFound.spec); }
+      }
+    }
+    grouped.forEach(g=>{
+      if(comboMap[g.id+'|'+g.spec]){ const o=grouped.find(x=>x.id+'|'+x.spec===comboMap[g.id+'|'+g.spec]); g.actual=g.qty+o.qty; }
+      else { g.actual=g.qty*getMultiplier(g.spec); }
+    });
+    const idGroups={};
+    grouped.forEach(g=>{ if(!idGroups[g.id]) idGroups[g.id]=[]; idGroups[g.id].push(g); });
+    let flatRows=[];
+    for(const id of Object.keys(idGroups).sort()){
+      const items=idGroups[id];
+      const totalAmount=items.reduce((s,x)=>s+x.amount,0);
+      items.forEach((item,i)=>{
+        if(i===0){
+          if(id===SPECIAL_ID){ flatRows.push({id:item.id,spec:item.spec,qty:item.qty,actual:item.actual,box:item.actual,amount:item.amount.toFixed(2),totalAmount:''}); }
+          else { flatRows.push({id:item.id,spec:item.spec,qty:item.qty,actual:item.actual,box:items.reduce((s,x)=>s+x.actual,0),amount:item.amount.toFixed(2),totalAmount:totalAmount.toFixed(2)}); }
+        } else {
+          if(id===SPECIAL_ID){ flatRows.push({id:'',spec:item.spec,qty:item.qty,actual:item.actual,box:item.actual,amount:item.amount.toFixed(2),totalAmount:''}); }
+          else { flatRows.push({id:'',spec:item.spec,qty:item.qty,actual:item.actual,box:'',amount:item.amount.toFixed(2),totalAmount:''}); }
+        }
+      });
+    }
+    document.getElementById('result-'+tab).style.display='block';
+    document.getElementById('stats-'+tab).innerHTML='<div class="stat"><div class="label">日期</div><div class="value">'+targetDate+'</div></div><div class="stat"><div class="label">订单行数</div><div class="value">'+allRows.length+'</div></div><div class="stat"><div class="label">已排除关闭</div><div class="value">'+totalClosed+'</div></div><div class="stat"><div class="label">总成交额</div><div class="value">¥'+allRows.reduce((s,r)=>s+r.amount,0).toFixed(2)+'</div></div>';
+    const tbl=document.getElementById('table-'+tab);
+    tbl.innerHTML='<thead><tr><th>商品ID</th><th>商品规格</th><th>商品数量</th><th>实际数量</th><th>总箱数</th><th>单规格成交额</th><th>商品总成交额</th></tr></thead>';
+    const tb=document.createElement('tbody');
+    flatRows.forEach(r=>{ tb.innerHTML+='<tr><td style="font-family:Consolas">'+r.id+'</td><td style="text-align:left">'+r.spec+'</td><td class="num">'+r.qty+'</td><td class="num">'+r.actual+'</td><td class="num">'+r.box+'</td><td class="num">'+r.amount+'</td><td class="num">'+r.totalAmount+'</td></tr>'; });
+    tbl.appendChild(tb);
+    window['_'+tab+'Data']=flatRows;
+    document.getElementById('btn-download-'+tab).style.display='inline-block';
+    showMsg(tab,'ok','汇总完成：'+grouped.length+' 个商品规格，总成交额 ¥'+allRows.reduce((s,r)=>s+r.amount,0).toFixed(2));
+  } catch(err){ showMsg(tab,'err','处理失败：'+err.message); }
+}
+['douyin','shipinhao','kuaishou'].forEach(tab=>{
+  document.getElementById('btn-process-'+tab).addEventListener('click',()=>processOrders(tab));
+  document.getElementById('btn-download-'+tab).addEventListener('click',()=>{
+    const data=window['_'+tab+'Data']; if(!data) return;
+    const ws=XLSX.utils.json_to_sheet(data);
+    ws['!cols']=[{wch:22},{wch:40},{wch:12},{wch:12},{wch:12},{wch:16},{wch:16}];
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'订单汇总');
+    XLSX.writeFile(wb,tab+'_订单汇总_'+document.getElementById('date-'+tab).value+'.xlsx');
+  });
+});
+const today=new Date().toISOString().slice(0,10);
+['douyin','shipinhao','kuaishou'].forEach(t=>{ document.getElementById('date-'+t).value=today; });
+</script>
+</body>
+</html>
