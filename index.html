@@ -60,7 +60,7 @@ td.num { text-align:right; font-family:Consolas,monospace; }
 </head>
 <body>
 <div class="header">
-  <h1>电商订单汇总工具 <a href="qianchuan.html" style="float:right;color:white;font-size:13px">千川商品分析 →</a></h1>
+  <h1>电商订单汇总工具</h1>
   <p>数据汇总 · 抖音 · 视频号 · 快手（同一页面，独立运行）</p>
 </div>
 <div class="container">
@@ -150,6 +150,9 @@ td.num { text-align:right; font-family:Consolas,monospace; }
     <div class="file-list" id="file-list-kuaishou"></div>
     <div class="controls" id="date-area-kuaishou">
       <span style="color:#999;font-size:12px;">上传后自动识别日期</span>
+    </div>
+    <div class="controls">
+      <input type="password" id="ks-password" placeholder="快手文件密码" style="padding:5px 8px;border:1px solid #d0d7e2;border-radius:4px;font-size:12px;width:130px;" />
     </div>
     <div class="controls">
       <button class="btn" id="btn-process-kuaishou" disabled>开始汇总</button>
@@ -270,7 +273,110 @@ function parseCSVText(text){
     return obj;
   });
 }
-function readFile(file){
+
+// ===== 快手加密xlsx浏览器端解密 (Agile Encryption) =====
+async function decryptAgileXlsx(buf, password){
+  // Read OLE2 structure
+  const cfb = XLSX.CFB || CFB;
+  const ole = cfb.read(buf, {type:'array'});
+  
+  // Extract EncryptionInfo
+  const encEntry = ole.FileIndex.find(f => f.name === 'EncryptionInfo');
+  if(!encEntry) throw new Error('不是加密文件');
+  const encInfoRaw = cfb.find(ole, 'EncryptionInfo').content;
+  
+  // Skip 8-byte header (version + flags), parse XML
+  const encInfoXml = new TextDecoder('utf-8').decode(encInfoRaw.slice(8));
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(encInfoXml, 'text/xml');
+  const encKey = xml.getElementsByTagName('p:encryptedKey')[0] || xml.getElementsByTagName('encryptedKey')[0];
+  if(!encKey) throw new Error('不支持的加密类型');
+  
+  const salt = base64ToBytes(encKey.getAttribute('saltValue'));
+  const spinCount = parseInt(encKey.getAttribute('spinCount'));
+  const keyBits = parseInt(encKey.getAttribute('keyBits'));
+  const encryptedKeyValue = base64ToBytes(encKey.getAttribute('encryptedKeyValue'));
+  const encryptedVerifierHashInput = base64ToBytes(encKey.getAttribute('encryptedVerifierHashInput'));
+  const encryptedVerifierHashValue = base64ToBytes(encKey.getAttribute('encryptedVerifierHashValue'));
+  
+  // Derive key: H = SHA1(salt + utf16le(password)), then iterate
+  const enc = new TextEncoder();
+  const pwBytes = strToUtf16le(password);
+  
+  let h = await crypto.subtle.digest('SHA-1', concatBytes(salt, pwBytes));
+  for(let i = 1; i <= spinCount; i++){
+    const iBuf = new ArrayBuffer(4);
+    new DataView(iBuf).setUint32(0, i, true);
+    h = await crypto.subtle.digest('SHA-1', concatBytes(new Uint8Array(h), new Uint8Array(iBuf)));
+  }
+  
+  const derivedKey = new Uint8Array(h).slice(0, keyBits/8);
+  
+  // Import derived key for AES-CBC
+  const aesKey = await crypto.subtle.importKey('raw', derivedKey, {name:'AES-CBC'}, false, ['decrypt']);
+  
+  // Decrypt encryptedKeyValue → content key
+  const contentKeyRaw = await crypto.subtle.decrypt(
+    {name:'AES-CBC', iv: salt}, aesKey, encryptedKeyValue
+  );
+  const contentKey = new Uint8Array(contentKeyRaw);
+  
+  // Verify password
+  const verifierHashInput = new Uint8Array(await crypto.subtle.decrypt(
+    {name:'AES-CBC', iv: salt}, aesKey, encryptedVerifierHashInput
+  ));
+  const verifierHashValue = new Uint8Array(await crypto.subtle.decrypt(
+    {name:'AES-CBC', iv: salt}, aesKey, encryptedVerifierHashValue
+  ));
+  const computedHash = new Uint8Array(await crypto.subtle.digest('SHA-1', verifierHashInput));
+  // Compare (first 20 bytes)
+  let match = true;
+  for(let i = 0; i < 20; i++){
+    if(computedHash[i] !== verifierHashValue[i]){ match = false; break; }
+  }
+  if(!match) throw new Error('密码错误');
+  
+  // Decrypt EncryptedPackage
+  const pkgEntry = cfb.find(ole, 'EncryptedPackage');
+  if(!pkgEntry) throw new Error('找不到加密数据');
+  const pkgData = pkgEntry.content;
+  
+  // First 8 bytes = unencrypted size (LE uint64)
+  const dataSize = Number(new DataView(pkgData.buffer, pkgData.byteOffset).getBigUint64(0, true));
+  const encryptedData = pkgData.slice(8);
+  
+  // Decrypt with content key, IV = salt
+  const contentAesKey = await crypto.subtle.importKey('raw', contentKey, {name:'AES-CBC'}, false, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt(
+    {name:'AES-CBC', iv: salt}, contentAesKey, encryptedData
+  );
+  
+  // Return only the actual data (pad to dataSize if needed)
+  return new Uint8Array(decrypted).slice(0, dataSize);
+}
+
+function base64ToBytes(b64){
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+function strToUtf16le(str){
+  const arr = new Uint8Array(str.length * 2);
+  for(let i = 0; i < str.length; i++){
+    arr[i*2] = str.charCodeAt(i) & 0xFF;
+    arr[i*2+1] = (str.charCodeAt(i) >> 8) & 0xFF;
+  }
+  return arr;
+}
+function concatBytes(a, b){
+  const c = new Uint8Array(a.length + b.length);
+  c.set(a, 0);
+  c.set(b, a.length);
+  return c;
+}
+
+function readFile(file, platform){
   return new Promise((resolve,reject)=>{
     const reader = new FileReader();
     if(file.name.toLowerCase().endsWith('.csv')){
@@ -282,7 +388,21 @@ function readFile(file){
       };
       reader.readAsText(file,'utf-8');
     } else {
-      reader.onload = e=>{ try{ resolve(XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true})); }catch(err){reject(err);} };
+      reader.onload = async e=>{
+        try{
+          var buf = new Uint8Array(e.target.result);
+          // Check if OLE2 (encrypted file header: D0CF11E0A1B11AE1)
+          var isOle = buf.length > 8 && buf[0]===0xD0 && buf[1]===0xCF && buf[2]===0x11 && buf[3]===0xE0;
+          if(isOle && platform==='kuaishou'){
+            var pw = document.getElementById('ks-password').value.trim();
+            if(!pw) throw new Error('请先输入快手文件密码');
+            var decrypted = await decryptAgileXlsx(e.target.result, pw);
+            resolve(XLSX.read(decrypted, {type:'array',cellDates:true}));
+          } else {
+            resolve(XLSX.read(buf,{type:'array',cellDates:true}));
+          }
+        }catch(err){reject(err);}
+      };
       reader.onerror = reject;
       reader.readAsArrayBuffer(file);
     }
@@ -389,10 +509,10 @@ function extractSpec(attr){
   }
   return s.trim();
 }
-async function detectDates(files){
+async function detectDates(files, platform){
   const dateSet = new Set();
   for(const f of files){
-    const wb = await readFile(f);
+    const wb = await readFile(f, platform);
     for(const sn of wb.SheetNames){
       const rows = sheetToJson(wb.Sheets[sn]);
       for(const r of rows){
@@ -415,7 +535,7 @@ async function detectDates(files){
     btn.disabled = true;
     area.innerHTML = '<span style="color:#999;font-size:12px;">识别日期中...</span>';
     try {
-      const dates = await detectDates(files);
+      const dates = await detectDates(files, tab);
       if(dates.length===0){ area.innerHTML = '<span style="color:#c62828;font-size:12px;">未识别到日期</span>'; return; }
       selectedDate = dates[dates.length-1];
       if(dates.length===1){ area.innerHTML = '📅 <span class="date-badge">'+dates[0]+'</span>'; }
@@ -436,7 +556,7 @@ async function detectDates(files){
 
       for(const f of files){
         // Step 1: 读文件，按日期筛选，排除已关闭，按商品ID+规格分组求和
-        const wb=await readFile(f);
+        const wb=await readFile(f, tab);
         let fileRows=[];
         for(const sn of wb.SheetNames){
           const rows=sheetToJson(wb.Sheets[sn]);
