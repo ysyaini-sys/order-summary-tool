@@ -172,8 +172,6 @@ const COMBO_PAIRS = [
   ['冰白葡萄原汁1箱320ml*6瓶+山葡萄原汁1箱320ml*6瓶(到手12瓶)','山葡萄原汁1箱320ml*6瓶+冰白葡萄原汁1箱320ml*6瓶(到手12瓶)']
 ];
 
-// 把数据存到 localStorage，新标签页读取
-// sheets: [{name: '子表名', rows: [[...]]}]
 function openSpreadsheet(title, sheets) {
   try {
     localStorage.setItem('sheetTitle', title);
@@ -336,10 +334,8 @@ async function detectDates(files){
     const targetDate = selectedDate;
     showMsg(tab,'warn','正在处理 '+targetDate+'...');
     try {
-      // 按文件独立处理，每个文件一个子表
       let perFileResults = [];
-      let totalClosed = 0, grandRows = 0, grandAmount = 0;
-
+      let totalClosed = 0, grandAmount = 0;
       for(const f of files){
         const wb=await readFile(f);
         let fileRows=[];
@@ -361,8 +357,6 @@ async function detectDates(files){
           }
         }
         if(fileRows.length===0) continue;
-
-        // 分组计算
         const groups={};
         for(const r of fileRows){ const k=r.id+'|'+r.spec; if(!groups[k]) groups[k]={id:r.id,spec:r.spec,qty:0,amount:0}; groups[k].qty+=r.qty; groups[k].amount+=r.amount; }
         let grouped=Object.values(groups).sort((a,b)=>{ if(a.id!==b.id) return a.id<b.id?-1:1; return a.spec.localeCompare(b.spec); });
@@ -380,19 +374,13 @@ async function detectDates(files){
             else { if(id===SPECIAL_ID){ flatRows.push({id:'',spec:item.spec,qty:item.qty,actual:item.actual,box:item.actual,amount:item.amount.toFixed(2),totalAmount:''}); } else { flatRows.push({id:'',spec:item.spec,qty:item.qty,actual:item.actual,box:'',amount:item.amount.toFixed(2),totalAmount:''}); } }
           });
         }
-
         const sheetName = f.name.replace(/\.[^.]+$/,'').slice(0,31);
-        perFileResults.push({name:sheetName, flatRows:flatRows, rows:fileRows.length, amount:fileRows.reduce((s,r)=>s+r.amount,0)});
-        grandRows += fileRows.length;
+        perFileResults.push({name:sheetName, flatRows:flatRows});
         grandAmount += fileRows.reduce((s,r)=>s+r.amount,0);
       }
-
       if(perFileResults.length===0){ showMsg(tab,'err','未找到 '+targetDate+' 的有效订单（排除 '+totalClosed+' 条）'); return; }
-
-      // 主页面预览：合并所有文件结果
       let combinedFlat = [];
       perFileResults.forEach(pf=>{ combinedFlat = combinedFlat.concat(pf.flatRows); });
-
       showResult(tab, true);
       document.getElementById('stats-'+tab).innerHTML='<div class="stat"><div class="label">日期</div><div class="value">'+targetDate.slice(5)+'</div></div><div class="stat"><div class="label">文件</div><div class="value">'+perFileResults.length+'</div></div><div class="stat"><div class="label">成交额</div><div class="value">¥'+grandAmount.toFixed(0)+'</div></div>';
       const tbl=document.getElementById('table-'+tab);
@@ -415,10 +403,7 @@ async function detectDates(files){
       pf.flatRows.forEach(r=>{ rows.push([String(r.id||''), r.spec, r.qty, r.actual, r.box, parseFloat(r.amount), r.totalAmount?parseFloat(r.totalAmount):'']); });
       return {name: pf.name, rows: rows};
     });
-    // 抖音额外生成汇总子表（Step 8）
-    if(tab==='douyin'){
-      sheetArr.unshift(buildSummarySheet(sheets));
-    }
+    if(tab==='douyin'){ sheetArr.unshift(buildSummarySheet(sheets)); }
     openSpreadsheet(tabName+'订单汇总', sheetArr);
   });
   document.getElementById('btn-download-'+tab).addEventListener('click',()=>{
@@ -439,26 +424,21 @@ async function detectDates(files){
   });
 });
 
-// 抖音汇总页（Step 8）：15个固定商品
 function buildSummarySheet(perFileResults){
   const EXCLUDE_ID = '3817189452003016710';
   const QYQ_ID = '3823309765342266082';
   const FLAVORS = ['山葡萄','冰白葡萄','软枣','蔓越莓','白桦','山梨'];
-
-  // 汇总所有文件的数据
-  const totals = {}; // key: store|productName -> {box, amount}
+  function isComboSpec(spec){ return /\+/.test(spec) || /组合/.test(spec); }
+  const totals = {};
   perFileResults.forEach(pf=>{
     let currentId = '';
+    let currentIsCombo = false;
     pf.flatRows.forEach(r=>{
-      if(r.id) currentId = r.id;
+      if(r.id){ currentId = r.id; currentIsCombo = isComboSpec(r.spec||''); }
       const id = currentId;
       if(id === EXCLUDE_ID) return;
       const spec = r.spec || '';
-      const isCanned = /罐/.test(spec);
-      const store = isCanned ? '官方店' : '饮品店';
-
       if(id === QYQ_ID){
-        // 泉阳泉：按规格分12瓶和24瓶
         if(/12瓶/.test(spec)){
           const k = '官方店|泉阳泉6罐';
           if(!totals[k]) totals[k]={box:0,amount:0};
@@ -472,39 +452,29 @@ function buildSummarySheet(perFileResults){
         }
         return;
       }
-
-      // 匹配口味
+      if(currentIsCombo) return;
+      if(!r.id) return;
+      const isCanned = /罐/.test(spec);
+      const store = isCanned ? '官方店' : '饮品店';
       for(const f of FLAVORS){
         if(spec.indexOf(f) !== -1){
           const productName = f + (isCanned ? '-罐装' : '-玻璃瓶');
           const k = store + '|' + productName;
           if(!totals[k]) totals[k]={box:0,amount:0};
           totals[k].box += parseFloat(r.box)||0;
-          totals[k].amount += parseFloat(r.amount)||0;
+          totals[k].amount += parseFloat(r.totalAmount)||0;
           break;
         }
       }
     });
   });
-
-  // 固定15行
   const rows = [['店铺','商品ID','商品名','总箱数','合计成交金额']];
   const items = [
-    ['饮品店','','山葡萄-玻璃瓶'],
-    ['饮品店','','冰白葡萄-玻璃瓶'],
-    ['饮品店','','软枣-玻璃瓶'],
-    ['饮品店','','蔓越莓-玻璃瓶'],
-    ['饮品店','','白桦-玻璃瓶'],
-    ['饮品店','','山梨-玻璃瓶'],
-    ['官方店','','山葡萄-罐装'],
-    ['官方店','','冰白葡萄-罐装'],
-    ['官方店','','软枣-罐装'],
-    ['官方店','','蔓越莓-罐装'],
-    ['官方店','','白桦-罐装'],
-    ['官方店','','山梨-罐装'],
-    ['官方店',QYQ_ID,'泉阳泉联名气泡水6罐'],
-    ['官方店','','泉阳泉联名气泡水12罐'],
-    ['官方店',QYQ_ID,'泉阳泉联名气泡水24罐']
+    ['饮品店','','山葡萄-玻璃瓶'],['饮品店','','冰白葡萄-玻璃瓶'],['饮品店','','软枣-玻璃瓶'],
+    ['饮品店','','蔓越莓-玻璃瓶'],['饮品店','','白桦-玻璃瓶'],['饮品店','','山梨-玻璃瓶'],
+    ['官方店','','山葡萄-罐装'],['官方店','','冰白葡萄-罐装'],['官方店','','软枣-罐装'],
+    ['官方店','','蔓越莓-罐装'],['官方店','','白桦-罐装'],['官方店','','山梨-罐装'],
+    ['官方店',QYQ_ID,'泉阳泉联名气泡水6罐'],['官方店','','泉阳泉联名气泡水12罐'],['官方店',QYQ_ID,'泉阳泉联名气泡水24罐']
   ];
   items.forEach(([store,pid,name])=>{
     const k = store+'|'+name;
@@ -514,16 +484,11 @@ function buildSummarySheet(perFileResults){
   return {name:'汇总', rows:rows};
 }
 
-// ===== Automa 一键下载 =====
 document.getElementById('btn-automa-toufang').addEventListener('click', ()=>{
   try {
-    window.dispatchEvent(new CustomEvent('automa:execute-workflow', {
-      detail: { publicId: 'toufang' }
-    }));
+    window.dispatchEvent(new CustomEvent('automa:execute-workflow', { detail: { publicId: 'toufang' } }));
     showMsg('summary', 'ok', '已触发 Automa 工作流，请等待自动下载完成...');
-  } catch(e) {
-    showMsg('summary', 'err', '触发失败，请确认 Automa 扩展已安装并开启');
-  }
+  } catch(e) { showMsg('summary', 'err', '触发失败，请确认 Automa 扩展已安装并开启'); }
 });
 </script>
 </body>
