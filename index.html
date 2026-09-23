@@ -190,6 +190,18 @@ function findComboPairIdx(spec, pairedSet){
   }
   return null;
 }
+function parseDateVal(dv){
+  if(dv instanceof Date){
+    var y=dv.getFullYear(), m=String(dv.getMonth()+1).padStart(2,'0'), d=String(dv.getDate()).padStart(2,'0');
+    return y+'-'+m+'-'+d;
+  }
+  var s=String(dv).trim();
+  var m=s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if(m) return m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');
+  m=s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if(m){ var y=m[3]; if(y.length===2) y='20'+y; return y+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0'); }
+  return '';
+}
 
 function openSpreadsheet(title, sheets) {
   try {
@@ -229,15 +241,49 @@ function setupUpload(tab, onFilesChanged){
   return { getFiles:()=>files };
 }
 function showMsg(tab,type,text){ document.getElementById('msg-'+tab).innerHTML='<div class="result-msg '+type+'">'+text+'</div>'; }
+function parseCSVText(text){
+  if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+  var rows=[], row=[], field='', inQ=false;
+  for(var i=0;i<text.length;i++){
+    var ch=text[i];
+    if(inQ){
+      if(ch==='"'){ if(text[i+1]==='"'){field+='"';i++;} else inQ=false; }
+      else field+=ch;
+    } else {
+      if(ch==='"') inQ=true;
+      else if(ch===','){ row.push(field); field=''; }
+      else if(ch==='\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else if(ch!=='\r') field+=ch;
+    }
+  }
+  if(field!==''||row.length>0){ row.push(field); rows.push(row); }
+  if(rows.length===0) return [];
+  var headers=rows[0];
+  return rows.slice(1).map(function(r){
+    var obj={};
+    for(var j=0;j<headers.length;j++) obj[headers[j]] = r[j]!==undefined?String(r[j]):'';
+    return obj;
+  });
+}
 function readFile(file){
   return new Promise((resolve,reject)=>{
     const reader = new FileReader();
-    reader.onload = e=>{ try{ resolve(XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true})); }catch(err){reject(err);} };
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
+    if(file.name.toLowerCase().endsWith('.csv')){
+      reader.onload = e=>{
+        try{
+          var rows = parseCSVText(e.target.result);
+          resolve({SheetNames:['Sheet1'], Sheets:{Sheet1: rows}});
+        }catch(err){reject(err);}
+      };
+      reader.readAsText(file,'utf-8');
+    } else {
+      reader.onload = e=>{ try{ resolve(XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true})); }catch(err){reject(err);} };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    }
   });
 }
-function sheetToJson(ws){ return XLSX.utils.sheet_to_json(ws,{defval:''}); }
+function sheetToJson(ws){ return Array.isArray(ws) ? ws : XLSX.utils.sheet_to_json(ws,{defval:''}); }
 function showResult(tab, show){ document.getElementById('result-'+tab).classList.toggle('show', show); }
 const uploads = { summary: setupUpload('summary') };
 
@@ -327,10 +373,7 @@ async function detectDates(files){
       for(const r of rows){
         const dateCol = Object.keys(r).find(k=>/支付完成时间|订单支付时间|支付时间/i.test(k));
         if(!dateCol) continue;
-        const dv = r[dateCol];
-        let rowDate = '';
-        if(dv instanceof Date){ rowDate = dv.toISOString().slice(0,10); }
-        else { const s = String(dv).trim(); const m = s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); if(m) rowDate = m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0'); }
+        const rowDate = parseDateVal(r[dateCol]);
         if(rowDate) dateSet.add(rowDate);
       }
     }
@@ -379,9 +422,7 @@ async function detectDates(files){
             if(!idCol||!qtyCol) continue;
             if(statusCol){ const st=String(r[statusCol]).trim(); if(st==='已关闭'||st==='交易关闭'||st==='已取消'){ totalClosed++; continue; } }
             if(dateCol){
-              const dv=r[dateCol]; let rowDate='';
-              if(dv instanceof Date){ rowDate=dv.toISOString().slice(0,10); }
-              else { const s=String(dv).trim(); const m=s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); if(m) rowDate=m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0'); }
+              const rowDate=parseDateVal(r[dateCol]);
               if(rowDate!==targetDate) continue;
             }
             const qty=parseFloat(String(r[qtyCol]).replace(/,/g,''))||0;
