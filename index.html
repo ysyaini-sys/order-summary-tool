@@ -7,70 +7,73 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background:#f5f7fa; color:#333; }
-.header { background:linear-gradient(135deg,#4472C4,#2f5597); color:#fff; padding:20px 32px; }
-.header h1 { font-size:20px; font-weight:600; }
-.header p { font-size:13px; opacity:.85; margin-top:4px; }
-.container { max-width:1200px; margin:20px auto; padding:0 24px; }
-.section { background:#fff; border-radius:10px; padding:24px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
-.section-head { display:flex; align-items:center; gap:10px; margin-bottom:16px; padding-bottom:12px; border-bottom:2px solid #e8ecf1; }
-.section-head .icon { font-size:24px; }
-.section-head h2 { font-size:16px; color:#2f5597; }
-.section-head .sub { font-size:12px; color:#999; margin-left:auto; }
-.upload-zone { border:2px dashed #c5d0e0; border-radius:8px; padding:24px; text-align:center; cursor:pointer; transition:.2s; }
+body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background:#f5f7fa; color:#333; height:100vh; overflow:hidden; display:flex; flex-direction:column; }
+.header { background:linear-gradient(135deg,#4472C4,#2f5597); color:#fff; padding:10px 20px; flex-shrink:0; }
+.header h1 { font-size:16px; font-weight:600; }
+.header p { font-size:11px; opacity:.85; margin-top:2px; }
+.container { flex:1; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:10px; padding:10px; overflow:hidden; }
+.section { background:#fff; border-radius:8px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; flex-direction:column; overflow:hidden; }
+.section-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; padding-bottom:6px; border-bottom:2px solid #e8ecf1; flex-shrink:0; }
+.section-head .icon { font-size:18px; }
+.section-head h2 { font-size:13px; color:#2f5597; }
+.section-head .sub { font-size:10px; color:#999; margin-left:auto; }
+.upload-zone { border:2px dashed #c5d0e0; border-radius:6px; padding:12px; text-align:center; cursor:pointer; transition:.2s; flex-shrink:0; }
 .upload-zone:hover, .upload-zone.dragover { border-color:#4472C4; background:#f0f5ff; }
-.upload-zone p { color:#888; font-size:14px; }
-.upload-zone .icon { font-size:28px; margin-bottom:6px; }
-.file-list { margin-top:10px; }
-.file-item { background:#f0f5ff; padding:6px 12px; border-radius:6px; margin-top:5px; font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+.upload-zone p { color:#888; font-size:12px; }
+.upload-zone .icon { font-size:20px; margin-bottom:2px; }
+.file-list { margin-top:6px; max-height:40px; overflow-y:auto; flex-shrink:0; }
+.file-item { background:#f0f5ff; padding:3px 8px; border-radius:4px; margin-top:3px; font-size:11px; display:flex; justify-content:space-between; align-items:center; }
 .file-item .rm { cursor:pointer; color:#e74c3c; font-weight:bold; }
-.controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:14px; }
-.controls label { font-size:14px; color:#555; }
-.controls select { padding:7px 10px; border:1px solid #d0d7e2; border-radius:6px; font-size:14px; min-width:150px; }
-.date-badge { display:inline-block; background:#e8f5e9; color:#2e7d32; padding:5px 12px; border-radius:6px; font-size:14px; font-weight:500; }
-.btn { background:#4472C4; color:#fff; border:none; padding:9px 20px; border-radius:6px; cursor:pointer; font-size:14px; font-weight:500; transition:.2s; }
+.controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; flex-shrink:0; }
+.controls select { padding:5px 8px; border:1px solid #d0d7e2; border-radius:4px; font-size:12px; min-width:120px; }
+.date-badge { display:inline-block; background:#e8f5e9; color:#2e7d32; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:500; }
+.btn { background:#4472C4; color:#fff; border:none; padding:6px 14px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:500; transition:.2s; }
 .btn:hover { background:#36569e; }
 .btn:disabled { background:#a0b4d4; cursor:not-allowed; }
 .btn-secondary { background:#fff; color:#4472C4; border:1px solid #4472C4; }
 .btn-secondary:hover { background:#f0f5ff; }
-.result-msg { padding:10px 14px; border-radius:6px; margin-top:12px; font-size:13px; }
+.result-msg { padding:6px 10px; border-radius:4px; margin-top:8px; font-size:11px; flex-shrink:0; }
 .result-msg.ok { background:#e8f5e9; color:#2e7d32; }
 .result-msg.err { background:#fdecea; color:#c62828; }
 .result-msg.warn { background:#fff8e1; color:#f57f17; }
-.result-box { display:none; margin-top:16px; border-top:1px solid #e8ecf1; padding-top:16px; }
-.result-box.show { display:block; }
-.stats { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:8px; }
-.stat { background:#f0f5ff; padding:10px 16px; border-radius:8px; }
-.stat .label { font-size:11px; color:#888; }
-.stat .value { font-size:18px; font-weight:600; color:#2f5597; margin-top:2px; }
-table { width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
-th { background:#4472C4; color:#fff; padding:8px 10px; text-align:center; font-weight:500; }
-td { padding:6px 10px; border:1px solid #e0e6ed; text-align:center; }
+.result-box { display:none; margin-top:8px; border-top:1px solid #e8ecf1; padding-top:8px; flex:1; overflow-y:auto; }
+.result-box.show { display:flex; flex-direction:column; }
+.stats { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:4px; flex-shrink:0; }
+.stat { background:#f0f5ff; padding:5px 10px; border-radius:4px; }
+.stat .label { font-size:10px; color:#888; }
+.stat .value { font-size:14px; font-weight:600; color:#2f5597; margin-top:1px; }
+table { width:100%; border-collapse:collapse; font-size:11px; }
+th { background:#4472C4; color:#fff; padding:4px 6px; text-align:center; font-weight:500; position:sticky; top:0; }
+td { padding:3px 6px; border:1px solid #e0e6ed; text-align:center; }
 tr:nth-child(even) td { background:#f8fafc; }
 td.num { text-align:right; font-family:Consolas,monospace; }
-.table-wrap { overflow-x:auto; }
+.table-wrap { overflow:auto; flex:1; }
+@media (max-width:768px){
+  body { overflow:auto; height:auto; }
+  .container { grid-template-columns:1fr; grid-template-rows:auto; }
+}
 </style>
 </head>
 <body>
 <div class="header">
   <h1>电商订单汇总工具</h1>
-  <p>数据汇总 · 抖音订单 · 视频号订单 · 快手订单（同一页面，独立运行）</p>
+  <p>数据汇总 · 抖音 · 视频号 · 快手（同一页面，独立运行）</p>
 </div>
 <div class="container">
   <div class="section">
     <div class="section-head">
       <span class="icon">📊</span>
-      <h2>投放数据汇总（乘方推广/全域推广）</h2>
-      <span class="sub">多文件合并 · 自动剔除"全部"行</span>
+      <h2>投放数据汇总</h2>
+      <span class="sub">多文件合并</span>
     </div>
     <div class="upload-zone" id="upload-summary">
       <div class="icon">📤</div>
-      <p>点击或拖拽上传多个 .xlsx 文件</p>
+      <p>点击或拖拽上传 .xlsx 文件</p>
     </div>
     <div class="file-list" id="file-list-summary"></div>
     <div class="controls">
       <button class="btn" id="btn-process-summary">开始汇总</button>
-      <button class="btn btn-secondary" id="btn-download-summary" style="display:none;">下载 Excel</button>
+      <button class="btn btn-secondary" id="btn-download-summary" style="display:none;">下载</button>
     </div>
     <div id="msg-summary"></div>
     <div class="result-box" id="result-summary">
@@ -81,20 +84,20 @@ td.num { text-align:right; font-family:Consolas,monospace; }
   <div class="section">
     <div class="section-head">
       <span class="icon">🛒</span>
-      <h2>抖音订单按商品汇总</h2>
-      <span class="sub">自动识别日期 · 排除已关闭订单</span>
+      <h2>抖音订单</h2>
+      <span class="sub">自动识别日期</span>
     </div>
     <div class="upload-zone" id="upload-douyin">
       <div class="icon">📤</div>
-      <p>点击或拖拽上传 .csv / .xlsx 订单文件</p>
+      <p>点击或拖拽上传 .csv / .xlsx</p>
     </div>
     <div class="file-list" id="file-list-douyin"></div>
     <div class="controls" id="date-area-douyin">
-      <span style="color:#999;font-size:14px;">上传文件后自动识别日期</span>
+      <span style="color:#999;font-size:12px;">上传后自动识别日期</span>
     </div>
     <div class="controls">
       <button class="btn" id="btn-process-douyin" disabled>开始汇总</button>
-      <button class="btn btn-secondary" id="btn-download-douyin" style="display:none;">下载 Excel</button>
+      <button class="btn btn-secondary" id="btn-download-douyin" style="display:none;">下载</button>
     </div>
     <div id="msg-douyin"></div>
     <div class="result-box" id="result-douyin">
@@ -105,20 +108,20 @@ td.num { text-align:right; font-family:Consolas,monospace; }
   <div class="section">
     <div class="section-head">
       <span class="icon">🎬</span>
-      <h2>视频号订单按商品汇总</h2>
-      <span class="sub">自动识别日期 · 排除已关闭订单</span>
+      <h2>视频号订单</h2>
+      <span class="sub">自动识别日期</span>
     </div>
     <div class="upload-zone" id="upload-shipinhao">
       <div class="icon">📤</div>
-      <p>点击或拖拽上传 .csv / .xlsx 订单文件</p>
+      <p>点击或拖拽上传 .csv / .xlsx</p>
     </div>
     <div class="file-list" id="file-list-shipinhao"></div>
     <div class="controls" id="date-area-shipinhao">
-      <span style="color:#999;font-size:14px;">上传文件后自动识别日期</span>
+      <span style="color:#999;font-size:12px;">上传后自动识别日期</span>
     </div>
     <div class="controls">
       <button class="btn" id="btn-process-shipinhao" disabled>开始汇总</button>
-      <button class="btn btn-secondary" id="btn-download-shipinhao" style="display:none;">下载 Excel</button>
+      <button class="btn btn-secondary" id="btn-download-shipinhao" style="display:none;">下载</button>
     </div>
     <div id="msg-shipinhao"></div>
     <div class="result-box" id="result-shipinhao">
@@ -129,20 +132,20 @@ td.num { text-align:right; font-family:Consolas,monospace; }
   <div class="section">
     <div class="section-head">
       <span class="icon">⚡</span>
-      <h2>快手订单按商品汇总</h2>
-      <span class="sub">自动识别日期 · 加密文件需先解密</span>
+      <h2>快手订单</h2>
+      <span class="sub">需先解密</span>
     </div>
     <div class="upload-zone" id="upload-kuaishou">
       <div class="icon">📤</div>
-      <p>点击或拖拽上传 .xlsx 订单文件（需先解密）</p>
+      <p>点击或拖拽上传 .xlsx</p>
     </div>
     <div class="file-list" id="file-list-kuaishou"></div>
     <div class="controls" id="date-area-kuaishou">
-      <span style="color:#999;font-size:14px;">上传文件后自动识别日期</span>
+      <span style="color:#999;font-size:12px;">上传后自动识别日期</span>
     </div>
     <div class="controls">
       <button class="btn" id="btn-process-kuaishou" disabled>开始汇总</button>
-      <button class="btn btn-secondary" id="btn-download-kuaishou" style="display:none;">下载 Excel</button>
+      <button class="btn btn-secondary" id="btn-download-kuaishou" style="display:none;">下载</button>
     </div>
     <div id="msg-kuaishou"></div>
     <div class="result-box" id="result-kuaishou">
@@ -177,7 +180,7 @@ function setupUpload(tab, onFilesChanged){
       files.push(f);
       const div = document.createElement('div');
       div.className='file-item';
-      div.innerHTML = '<span>📄 '+f.name+' ('+(f.size/1024).toFixed(1)+' KB)</span><span class="rm">✕</span>';
+      div.innerHTML = '<span>📄 '+f.name+' ('+(f.size/1024).toFixed(1)+'KB)</span><span class="rm">✕</span>';
       div.querySelector('.rm').onclick=()=>{ files=files.filter(x=>x!==f); div.remove(); if(onFilesChanged) onFilesChanged(files); };
       list.appendChild(div);
     }
@@ -235,15 +238,15 @@ document.getElementById('btn-process-summary').addEventListener('click', async (
       dates.forEach((d,i)=>{ flatRows.push({pkg:i===0?g.pkg:'', id:i===0?g.id:'', name:i===0?g.name:'', date:d.date, cost:d.cost.toFixed(2), total:i===0?g.total.toFixed(2):''}); });
     }
     showResult('summary', true);
-    document.getElementById('stats-summary').innerHTML='<div class="stat"><div class="label">文件数</div><div class="value">'+fileCount+'</div></div><div class="stat"><div class="label">总记录数</div><div class="value">'+allRows.length+'</div></div><div class="stat"><div class="label">总消耗</div><div class="value">¥'+allRows.reduce((s,r)=>s+r.cost,0).toFixed(2)+'</div></div>';
+    document.getElementById('stats-summary').innerHTML='<div class="stat"><div class="label">文件</div><div class="value">'+fileCount+'</div></div><div class="stat"><div class="label">记录</div><div class="value">'+allRows.length+'</div></div><div class="stat"><div class="label">总消耗</div><div class="value">¥'+allRows.reduce((s,r)=>s+r.cost,0).toFixed(2)+'</div></div>';
     const tbl=document.getElementById('table-summary');
-    tbl.innerHTML='<thead><tr><th>包装</th><th>商品ID</th><th>商品名称</th><th>日期</th><th>整体消耗</th><th>总消耗</th></tr></thead>';
+    tbl.innerHTML='<thead><tr><th>包装</th><th>商品ID</th><th>商品名称</th><th>日期</th><th>消耗</th><th>总消耗</th></tr></thead>';
     const tb=document.createElement('tbody');
     flatRows.forEach(r=>{ tb.innerHTML+='<tr><td>'+r.pkg+'</td><td style="font-family:Consolas">'+r.id+'</td><td>'+r.name+'</td><td>'+r.date+'</td><td class="num">'+r.cost+'</td><td class="num">'+r.total+'</td></tr>'; });
     tbl.appendChild(tb);
     window._summaryData=flatRows;
     document.getElementById('btn-download-summary').style.display='inline-block';
-    showMsg('summary','ok','汇总完成：'+allRows.length+' 条记录，'+Object.keys(groups).length+' 个商品');
+    showMsg('summary','ok','完成：'+allRows.length+' 条记录，'+Object.keys(groups).length+' 个商品');
   } catch(err){ showMsg('summary','err','处理失败：'+err.message); }
 });
 document.getElementById('btn-download-summary').addEventListener('click',()=>{
@@ -284,24 +287,24 @@ async function detectDates(files){
   setupUpload(tab, async (files)=>{
     const btn = document.getElementById('btn-process-'+tab);
     const area = document.getElementById('date-area-'+tab);
-    if(files.length===0){ area.innerHTML = '<span style="color:#999;font-size:14px;">上传文件后自动识别日期</span>'; btn.disabled = true; selectedDate = null; return; }
+    if(files.length===0){ area.innerHTML = '<span style="color:#999;font-size:12px;">上传后自动识别日期</span>'; btn.disabled = true; selectedDate = null; return; }
     btn.disabled = true;
-    area.innerHTML = '<span style="color:#999;font-size:14px;">正在识别日期...</span>';
+    area.innerHTML = '<span style="color:#999;font-size:12px;">识别日期中...</span>';
     try {
       const dates = await detectDates(files);
-      if(dates.length===0){ area.innerHTML = '<span style="color:#c62828;font-size:14px;">未识别到支付日期</span>'; return; }
+      if(dates.length===0){ area.innerHTML = '<span style="color:#c62828;font-size:12px;">未识别到日期</span>'; return; }
       selectedDate = dates[dates.length-1];
-      if(dates.length===1){ area.innerHTML = '📅 文件日期：<span class="date-badge">'+dates[0]+'</span>'; }
-      else { let opts = dates.map(d=>'<option value="'+d+'"'+(d===selectedDate?' selected':'')+'>'+d+'</option>').join(''); area.innerHTML = '📅 选择日期：<select id="date-select-'+tab+'">'+opts+'</select>'; document.getElementById('date-select-'+tab).addEventListener('change', e=>{ selectedDate = e.target.value; }); }
+      if(dates.length===1){ area.innerHTML = '📅 <span class="date-badge">'+dates[0]+'</span>'; }
+      else { let opts = dates.map(d=>'<option value="'+d+'"'+(d===selectedDate?' selected':'')+'>'+d+'</option>').join(''); area.innerHTML = '📅 <select id="date-select-'+tab+'">'+opts+'</select>'; document.getElementById('date-select-'+tab).addEventListener('change', e=>{ selectedDate = e.target.value; }); }
       btn.disabled = false;
-    } catch(err){ area.innerHTML = '<span style="color:#c62828;font-size:14px;">日期识别失败</span>'; }
+    } catch(err){ area.innerHTML = '<span style="color:#c62828;font-size:12px;">日期识别失败</span>'; }
   });
   document.getElementById('btn-process-'+tab).addEventListener('click', async ()=>{
     const files = uploads[tab].getFiles();
     if(files.length===0){ showMsg(tab,'err','请先上传文件'); return; }
     if(!selectedDate){ showMsg(tab,'err','未识别到日期'); return; }
     const targetDate = selectedDate;
-    showMsg(tab,'warn','正在处理 '+targetDate+' 的订单...');
+    showMsg(tab,'warn','正在处理 '+targetDate+'...');
     try {
       let allRows=[], totalClosed=0;
       for(const f of files){
@@ -324,7 +327,7 @@ async function detectDates(files){
           }
         }
       }
-      if(allRows.length===0){ showMsg(tab,'err','未找到 '+targetDate+' 的有效订单（已排除 '+totalClosed+' 条关闭订单）'); return; }
+      if(allRows.length===0){ showMsg(tab,'err','未找到 '+targetDate+' 的有效订单（排除 '+totalClosed+' 条）'); return; }
       const groups={};
       for(const r of allRows){ const k=r.id+'|'+r.spec; if(!groups[k]) groups[k]={id:r.id,spec:r.spec,qty:0,amount:0}; groups[k].qty+=r.qty; groups[k].amount+=r.amount; }
       let grouped=Object.values(groups).sort((a,b)=>{ if(a.id!==b.id) return a.id<b.id?-1:1; return a.spec.localeCompare(b.spec); });
@@ -343,16 +346,16 @@ async function detectDates(files){
         });
       }
       showResult(tab, true);
-      document.getElementById('stats-'+tab).innerHTML='<div class="stat"><div class="label">日期</div><div class="value">'+targetDate+'</div></div><div class="stat"><div class="label">订单行数</div><div class="value">'+allRows.length+'</div></div><div class="stat"><div class="label">已排除关闭</div><div class="value">'+totalClosed+'</div></div><div class="stat"><div class="label">总成交额</div><div class="value">¥'+allRows.reduce((s,r)=>s+r.amount,0).toFixed(2)+'</div></div>';
+      document.getElementById('stats-'+tab).innerHTML='<div class="stat"><div class="label">日期</div><div class="value">'+targetDate.slice(5)+'</div></div><div class="stat"><div class="label">行数</div><div class="value">'+allRows.length+'</div></div><div class="stat"><div class="label">成交额</div><div class="value">¥'+allRows.reduce((s,r)=>s+r.amount,0).toFixed(0)+'</div></div>';
       const tbl=document.getElementById('table-'+tab);
-      tbl.innerHTML='<thead><tr><th>商品ID</th><th>商品规格</th><th>商品数量</th><th>实际数量</th><th>总箱数</th><th>单规格成交额</th><th>商品总成交额</th></tr></thead>';
+      tbl.innerHTML='<thead><tr><th>商品ID</th><th>规格</th><th>数量</th><th>实际</th><th>箱数</th><th>成交额</th><th>总额</th></tr></thead>';
       const tb=document.createElement('tbody');
       flatRows.forEach(r=>{ tb.innerHTML+='<tr><td style="font-family:Consolas">'+r.id+'</td><td style="text-align:left">'+r.spec+'</td><td class="num">'+r.qty+'</td><td class="num">'+r.actual+'</td><td class="num">'+r.box+'</td><td class="num">'+r.amount+'</td><td class="num">'+r.totalAmount+'</td></tr>'; });
       tbl.appendChild(tb);
       window['_'+tab+'Data']=flatRows;
       window['_'+tab+'Date']=targetDate;
       document.getElementById('btn-download-'+tab).style.display='inline-block';
-      showMsg(tab,'ok','汇总完成：'+grouped.length+' 个商品规格，总成交额 ¥'+allRows.reduce((s,r)=>s+r.amount,0).toFixed(2));
+      showMsg(tab,'ok','完成：'+grouped.length+' 个规格，¥'+allRows.reduce((s,r)=>s+r.amount,0).toFixed(2));
     } catch(err){ showMsg(tab,'err','处理失败：'+err.message); }
   });
   document.getElementById('btn-download-'+tab).addEventListener('click',()=>{
