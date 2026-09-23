@@ -171,6 +171,25 @@ const COMBO_PAIRS = [
   ['山葡萄原汁1箱+冰白葡萄原汁1箱320ml*12罐(到手12罐)','冰白葡萄原汁1箱320ml*6罐+山葡萄原汁1箱320ml*6瓶罐320ml*12罐(到手12罐)'],
   ['冰白葡萄原汁1箱320ml*6瓶+山葡萄原汁1箱320ml*6瓶(到手12瓶)','山葡萄原汁1箱320ml*6瓶+冰白葡萄原汁1箱320ml*6瓶(到手12瓶)']
 ];
+function normalizeSpec(s){
+  return String(s||'').replace(/\s+/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/／/g,'/');
+}
+var COMBO_PAIRS_NORM = COMBO_PAIRS.map(function(p){ return p.map(normalizeSpec); });
+function isComboSpec(spec){
+  var n = normalizeSpec(spec);
+  for(var i=0;i<COMBO_PAIRS_NORM.length;i++){
+    if(COMBO_PAIRS_NORM[i].indexOf(n)!==-1) return true;
+  }
+  return false;
+}
+function findComboPairIdx(spec, pairedSet){
+  var n = normalizeSpec(spec);
+  for(var i=0;i<COMBO_PAIRS_NORM.length;i++){
+    var a = COMBO_PAIRS_NORM[i][0], b = COMBO_PAIRS_NORM[i][1];
+    if(n===a || n===b) return {pairIdx:i, self:n, other:n===a?b:a};
+  }
+  return null;
+}
 
 function openSpreadsheet(title, sheets) {
   try {
@@ -346,7 +365,6 @@ async function detectDates(files){
       let totalClosed = 0, grandRows = 0, grandAmount = 0;
 
       for(const f of files){
-        // Step 1: 读文件，按日期筛选，排除已关闭，按商品ID+规格分组求和
         const wb=await readFile(f);
         let fileRows=[];
         for(const sn of wb.SheetNames){
@@ -373,29 +391,36 @@ async function detectDates(files){
         }
         if(fileRows.length===0) continue;
 
-        // Step 1续: 按ID+规格分组，按ID、规格排序
         const groups={};
         for(const r of fileRows){ const k=r.id+'\u0000'+r.spec; if(!groups[k]) groups[k]={id:r.id,spec:r.spec,qty:0,amount:0}; groups[k].qty+=r.qty; groups[k].amount+=r.amount; }
         let grouped=Object.values(groups).sort((a,b)=>{ if(a.id!==b.id) return a.id<b.id?-1:1; return a.spec<b.spec?-1:1; });
 
-        // Step 3: 组合规格配对（跨商品ID，按出现顺序一对一，无配对的按普通倍率×2）
-        const comboPaired=new Set(), comboIdxMap={};
-        for(const pair of COMBO_PAIRS){
-          for(const p of pair){
-            const fIdx=grouped.findIndex((g,i)=> g.spec===p && !comboPaired.has(i));
-            if(fIdx<0) continue;
-            const other=pair.find(x=>x!==p);
-            const oIdx=grouped.findIndex((g,i)=> g.spec===other && !comboPaired.has(i));
-            if(oIdx>=0){ comboIdxMap[fIdx]=oIdx; comboIdxMap[oIdx]=fIdx; comboPaired.add(fIdx); comboPaired.add(oIdx); }
+        var comboPaired=new Set(), comboIdxMap={};
+        for(var pi=0;pi<COMBO_PAIRS_NORM.length;pi++){
+          var pairNorm = COMBO_PAIRS_NORM[pi];
+          var matched = {};
+          for(var gi=0; gi<grouped.length; gi++){
+            if(comboPaired.has(gi)) continue;
+            var info = findComboPairIdx(grouped[gi].spec, comboPaired);
+            if(!info || info.pairIdx!==pi) continue;
+            var otherNorm = info.other;
+            if(matched[otherNorm] !== undefined){
+              var oIdx = matched[otherNorm];
+              comboIdxMap[gi] = oIdx;
+              comboIdxMap[oIdx] = gi;
+              comboPaired.add(gi);
+              comboPaired.add(oIdx);
+              delete matched[otherNorm];
+            } else {
+              matched[info.self] = gi;
+            }
           }
         }
-        // Step 3续: 计算D列实际数量
         grouped.forEach((g,idx)=>{
           if(comboIdxMap[idx]!==undefined){ g.actual=g.qty+grouped[comboIdxMap[idx]].qty; }
           else { g.actual=g.qty*getMultiplier(g.spec); }
         });
 
-        // Step 4/5: 按商品ID分组，生成扁平行（A列合并、E列总箱数、F列成交额、G列总成交额）
         const idGroups={};
         grouped.forEach(g=>{ if(!idGroups[g.id]) idGroups[g.id]=[]; idGroups[g.id].push(g); });
         let flatRows=[];
@@ -436,7 +461,7 @@ async function detectDates(files){
       showResult(tab, true);
       document.getElementById('stats-'+tab).innerHTML='<div class="stat"><div class="label">日期</div><div class="value">'+targetDate.slice(5)+'</div></div><div class="stat"><div class="label">文件</div><div class="value">'+perFileResults.length+'</div></div><div class="stat"><div class="label">成交额</div><div class="value">¥'+grandAmount.toFixed(0)+'</div></div>';
       const tbl=document.getElementById('table-'+tab);
-      tbl.innerHTML='<thead><tr><th>商品ID</th><th>商品规格</th><th>商品数量</th><th>实际数量</th><th>总箱数</th><th>单规格成交额</th><th>商品总成交额</th></tr></thead>';
+      tbl.innerHTML='<thead><tr><th>商品ID</th><th>商品规格</th><th>商品数量合计</th><th>实际数量</th><th>总箱数</th><th>单规格成交额</th><th>商品总成交额</th></tr></thead>';
       const tb=document.createElement('tbody');
       combinedFlat.forEach(r=>{ tb.innerHTML+='<tr><td style="font-family:Consolas">'+r.id+'</td><td style="text-align:left">'+r.spec+'</td><td class="num">'+r.qty+'</td><td class="num">'+r.actual+'</td><td class="num">'+r.box+'</td><td class="num">'+r.amount+'</td><td class="num">'+r.totalAmount+'</td></tr>'; });
       tbl.appendChild(tb);
@@ -451,7 +476,7 @@ async function detectDates(files){
     const sheets=window['_'+tab+'Sheets']; if(!sheets||!sheets.length) return;
     const tabName = tab==='douyin'?'抖音':tab==='shipinhao'?'视频号':'快手';
     const sheetArr = sheets.map(pf=>{
-      const rows = [['商品ID','商品规格','商品数量','实际数量','总箱数','单规格成交额','商品总成交额']];
+      const rows = [['商品ID','商品规格','商品数量合计','实际数量','总箱数','单规格成交额','商品总成交额']];
       pf.flatRows.forEach(r=>{ rows.push([String(r.id||''), r.spec, r.qty, r.actual, r.box, parseFloat(r.amount), r.totalAmount?parseFloat(r.totalAmount):'']); });
       return {name: pf.name, rows: rows};
     });
@@ -470,7 +495,7 @@ async function detectDates(files){
       XLSX.utils.book_append_sheet(wb,ws0,'汇总');
     }
     sheets.forEach(pf=>{
-      const ws=XLSX.utils.json_to_sheet(pf.flatRows);
+      const ws=XLSX.utils.json_to_sheet(pf.flatRows.map(r=>({商品ID:r.id,商品规格:r.spec,商品数量合计:r.qty,实际数量:r.actual,总箱数:r.box,单规格成交额:parseFloat(r.amount),商品总成交额:r.totalAmount?parseFloat(r.totalAmount):''})));
       ws['!cols']=[{wch:22},{wch:40},{wch:12},{wch:12},{wch:12},{wch:16},{wch:16}];
       XLSX.utils.book_append_sheet(wb,ws,pf.name.slice(0,31));
     });
@@ -478,12 +503,10 @@ async function detectDates(files){
   });
 });
 
-// 抖音汇总页（Step 8）：15个固定商品
 function buildSummarySheet(perFileResults){
   const EXCLUDE_ID = '3817189452003016710';
   const QYQ_ID = '3823309765342266082';
   const FLAVORS = ['山葡萄','冰白葡萄','软枣','蔓越莓','白桦','山梨'];
-  function isComboSpec(spec){ spec=spec||''; return spec.indexOf('+')!==-1 || spec.indexOf('组合')!==-1; }
   const totals = {};
   perFileResults.forEach(pf=>{
     let currentId='';
@@ -555,7 +578,6 @@ function buildSummarySheet(perFileResults){
   return {name:'汇总',rows:rows};
 }
 
-// ===== Automa 一键下载 =====
 document.getElementById('btn-automa-toufang').addEventListener('click', ()=>{
   try {
     window.dispatchEvent(new CustomEvent('automa:execute-workflow', {
