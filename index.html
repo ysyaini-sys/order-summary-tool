@@ -254,14 +254,22 @@ document.getElementById('btn-process-summary').addEventListener('click', async (
     let result = Object.values(groups).map(g=>({...g, pkg:CANNED_IDS.includes(g.id)?'罐装':'瓶装'}));
     result.sort((a,b)=>{ if(a.pkg!==b.pkg) return a.pkg==='罐装'?-1:1; if(a.id!==b.id) return a.id<b.id?-1:1; return 0; });
     let flatRows=[];
+    let cannedWritten=false, bottledWritten=false;
     for(const g of result){
       const dates = g.dates.sort((a,b)=>a.date.localeCompare(b.date));
-      dates.forEach((d,i)=>{ flatRows.push({pkg:i===0?g.pkg:'', id:i===0?g.id:'', name:i===0?g.name:'', date:d.date, cost:d.cost.toFixed(2), total:i===0?g.total.toFixed(2):''}); });
+      dates.forEach((d,i)=>{
+        let pkgVal='';
+        if(i===0){
+          if(g.pkg==='罐装' && !cannedWritten){ pkgVal='罐装'; cannedWritten=true; }
+          else if(g.pkg==='瓶装' && !bottledWritten){ pkgVal='瓶装'; bottledWritten=true; }
+        }
+        flatRows.push({pkg:pkgVal, id:i===0?g.id:'', name:i===0?g.name:'', date:d.date, cost:d.cost.toFixed(2), total:i===0?g.total.toFixed(2):''});
+      });
     }
     showResult('summary', true);
     document.getElementById('stats-summary').innerHTML='<div class="stat"><div class="label">文件</div><div class="value">'+fileCount+'</div></div><div class="stat"><div class="label">记录</div><div class="value">'+allRows.length+'</div></div><div class="stat"><div class="label">总消耗</div><div class="value">¥'+allRows.reduce((s,r)=>s+r.cost,0).toFixed(2)+'</div></div>';
     const tbl=document.getElementById('table-summary');
-    tbl.innerHTML='<thead><tr><th>包装</th><th>商品ID</th><th>商品名称</th><th>日期</th><th>消耗</th><th>总消耗</th></tr></thead>';
+    tbl.innerHTML='<thead><tr><th>包装</th><th>商品ID</th><th>商品名称</th><th>日期</th><th>整体消耗</th><th>总消耗</th></tr></thead>';
     const tb=document.createElement('tbody');
     flatRows.forEach(r=>{ tb.innerHTML+='<tr><td>'+r.pkg+'</td><td style="font-family:Consolas">'+r.id+'</td><td>'+r.name+'</td><td>'+r.date+'</td><td class="num">'+r.cost+'</td><td class="num">'+r.total+'</td></tr>'; });
     tbl.appendChild(tb);
@@ -273,7 +281,7 @@ document.getElementById('btn-process-summary').addEventListener('click', async (
 });
 document.getElementById('btn-sheet-summary').addEventListener('click', ()=>{
   if(!window._summaryData) return;
-  const rows = [['包装','商品ID','商品名称','日期','消耗','总消耗']];
+  const rows = [['包装','商品ID','商品名称','日期','整体消耗','总消耗']];
   window._summaryData.forEach(r=>{ rows.push([r.pkg, String(r.id), r.name, r.date, parseFloat(r.cost), r.total?parseFloat(r.total):'']); });
   openSpreadsheet('投放数据汇总', [{name: '汇总', rows: rows}]);
 });
