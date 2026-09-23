@@ -32,6 +32,8 @@ body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background:#f5
 .btn:disabled { background:#a0b4d4; cursor:not-allowed; }
 .btn-secondary { background:#fff; color:#4472C4; border:1px solid #4472C4; }
 .btn-secondary:hover { background:#f0f5ff; }
+.btn-automa { background:#e67e22; }
+.btn-automa:hover { background:#d35400; }
 .result-msg { padding:6px 10px; border-radius:4px; margin-top:8px; font-size:11px; flex-shrink:0; }
 .result-msg.ok { background:#e8f5e9; color:#2e7d32; }
 .result-msg.err { background:#fdecea; color:#c62828; }
@@ -72,6 +74,7 @@ td.num { text-align:right; font-family:Consolas,monospace; }
     </div>
     <div class="file-list" id="file-list-summary"></div>
     <div class="controls">
+      <button class="btn btn-automa" id="btn-automa-toufang">🚀 一键下载</button>
       <button class="btn" id="btn-process-summary">开始汇总</button>
       <button class="btn btn-secondary" id="btn-download-summary" style="display:none;">下载</button>
     </div>
@@ -365,6 +368,18 @@ async function detectDates(files){
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'订单汇总');
     XLSX.writeFile(wb,tab+'_订单汇总_'+(window['_'+tab+'Date']||'')+'.xlsx');
   });
+});
+
+// ===== Automa 一键触发 =====
+document.getElementById('btn-automa-toufang').addEventListener('click', ()=>{
+  try {
+    window.dispatchEvent(new CustomEvent('automa:execute-workflow', {
+      detail: { publicId: 'toufang' }
+    }));
+    showMsg('summary', 'ok', '已触发 Automa 工作流，请等待自动下载完成...');
+  } catch(e) {
+    showMsg('summary', 'err', '触发失败，请确认 Automa 扩展已安装并开启');
+  }
 });
 </script>
 </body>
