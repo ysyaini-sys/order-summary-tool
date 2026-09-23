@@ -175,6 +175,20 @@ td.num { text-align:right; font-family:Consolas,monospace; }
     </div>
   </div>
 </div>
+<!-- 飞书设置弹窗 -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <h3>飞书应用配置</h3>
+    <label>App ID</label>
+    <input type="text" id="input-app-id" placeholder="cli_xxxxxxxxxxxx">
+    <label>App Secret</label>
+    <input type="password" id="input-app-secret" placeholder="飞书应用密钥">
+    <div class="modal-btns">
+      <button class="btn btn-secondary" id="btn-settings-cancel">取消</button>
+      <button class="btn" id="btn-settings-save">保存</button>
+    </div>
+  </div>
+</div>
 <script>
 const CANNED_IDS = ['3823309765342266082','3697193324864733221','3697191108854546926','3697171044847714581','3692684294234439935'];
 const SPECIAL_ID = '3823309765342266082';
@@ -490,19 +504,5 @@ document.getElementById('btn-automa-toufang').addEventListener('click', ()=>{
   }
 });
 </script>
-<!-- 飞书设置弹窗 -->
-<div class="modal-overlay" id="settings-modal">
-  <div class="modal">
-    <h3>飞书应用配置</h3>
-    <label>App ID</label>
-    <input type="text" id="input-app-id" placeholder="cli_xxxxxxxxxxxx">
-    <label>App Secret</label>
-    <input type="password" id="input-app-secret" placeholder="飞书应用密钥">
-    <div class="modal-btns">
-      <button class="btn btn-secondary" id="btn-settings-cancel">取消</button>
-      <button class="btn" id="btn-settings-save">保存</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
