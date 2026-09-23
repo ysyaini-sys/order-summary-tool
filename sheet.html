@@ -20,12 +20,12 @@ body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#f5f7f
 .sheet-tab.active { background:#4472C4; color:#fff; font-weight:600; border-color:#4472C4; }
 .sheet-tab:hover:not(.active) { background:#dce6f5; }
 .table-wrap { background:#fff; border-radius:0 8px 8px 8px; box-shadow:0 1px 3px rgba(0,0,0,.08); overflow:auto; max-height:calc(100vh - 120px); }
-table { border-collapse:collapse; font-size:13px; }
+table { border-collapse:collapse; font-size:13px; width:100%; }
 th { background:#4472C4; color:#fff; padding:8px 10px; text-align:center; font-weight:600; position:sticky; top:0; z-index:10; border:1px solid #3a5a8c; white-space:nowrap; }
 td { padding:6px 10px; border:1px solid #e0e6ed; text-align:center; vertical-align:middle; }
 td.col-id { font-family:Consolas,Monaco,monospace; text-align:center; white-space:nowrap; }
-td.col-num { text-align:right; font-family:Consolas,Monaco,monospace; white-space:nowrap; }
-td.col-text { text-align:left; }
+td.col-int { text-align:center; font-family:Consolas,Monaco,monospace; white-space:nowrap; }
+td.col-dec { text-align:right; font-family:Consolas,Monaco,monospace; white-space:nowrap; }
 td[contenteditable="true"]:focus { outline:2px solid #4472C4; background:#e8f0fe; }
 td[contenteditable="true"]:hover { background:#f8fafc; }
 tr:nth-child(even) td { background:#fafbfc; }
@@ -47,17 +47,16 @@ tr:nth-child(even) td[contenteditable="true"]:focus { background:#e8f0fe; }
 </div>
 <p class="hint">点击单元格直接编辑 · 点击表头排序 · Tab键切换下一格 · 子表间切换顶部标签</p>
 <script>
-var sheets = [];       // [{name, rows}]
+var sheets = [];
 var activeSheet = 0;
-var tableType = '';
 var sortCol = -1;
 var sortAsc = true;
 var SPECIAL_ID = '3823309765342266082';
 
-var COL_WIDTHS = {
-  summary: [80, 180, 360, 100, 120, 120],
-  orders:  [180, 360, 100, 100, 100, 120, 120],
-  orderSummary: [100, 200, 180, 100, 140]
+var COL_TYPES = {
+  summary:     ['text','id','text','text','dec','dec'],
+  orders:      ['id','text','int','int','int','dec','dec'],
+  orderSummary:['text','id','text','int','dec']
 };
 
 function detectType(rows) {
@@ -100,24 +99,6 @@ function switchSheet(i) {
   render();
 }
 
-function getColClass(c, type) {
-  if (type === 'summary') {
-    if (c === 0) return 'col-text';
-    if (c === 1) return 'col-id';
-    if (c === 2) return 'col-text';
-    return 'col-num';
-  } else if (type === 'orderSummary') {
-    if (c === 0) return 'col-text';
-    if (c === 1) return 'col-id';
-    if (c === 2) return 'col-text';
-    return 'col-num';
-  } else {
-    if (c === 0) return 'col-id';
-    if (c === 1) return 'col-text';
-    return 'col-num';
-  }
-}
-
 function calcRowspan(rows, r, c) {
   if (rows[r][c] === '' || rows[r][c] === null || rows[r][c] === undefined) return 0;
   var span = 1;
@@ -145,10 +126,12 @@ function shouldMerge(rows, col, r, type) {
   }
 }
 
-function formatCell(v, colClass) {
+function formatCell(v, colType) {
   if (v === '' || v === null || v === undefined) return ' ';
-  if (colClass === 'col-num' && typeof v === 'number') {
-    return v.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  if (typeof v === 'number') {
+    if (colType === 'int') return v.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+    if (colType === 'dec') return v.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    return String(v);
   }
   return String(v);
 }
@@ -158,7 +141,7 @@ function render() {
   var rows = sheet.rows;
   var cols = rows[0].length;
   var type = detectType(rows);
-  var widths = COL_WIDTHS[type] || [];
+  var colTypes = COL_TYPES[type] || [];
 
   var html = '<thead><tr>';
   for (var c = 0; c < cols; c++) {
@@ -172,9 +155,9 @@ function render() {
   for (var r = 1; r < rows.length; r++) {
     html += '<tr>';
     for (var c = 0; c < cols; c++) {
-      var colClass = getColClass(c, type);
+      var ct = colTypes[c] || 'text';
       var v = rows[r][c];
-      var display = formatCell(v, colClass);
+      var display = formatCell(v, ct);
 
       var rowspan = '';
       if (shouldMerge(rows, c, r, type)) {
@@ -183,7 +166,7 @@ function render() {
         else if (rs === 0) continue;
       }
 
-      html += '<td class="' + colClass + '" contenteditable="true" data-row="' + r + '" data-col="' + c + '"' + rowspan + '>' + display + '</td>';
+      html += '<td class="col-' + ct + '" contenteditable="true" data-row="' + r + '" data-col="' + c + '"' + rowspan + '>' + display + '</td>';
     }
     html += '<td style="text-align:center;cursor:pointer;color:#e74c3c;" onclick="delRow(' + r + ')">✕</td>';
     html += '</tr>';
@@ -191,18 +174,14 @@ function render() {
   html += '</tbody>';
   document.getElementById('tbl').innerHTML = html;
 
-  var ths = document.querySelectorAll('thead th');
-  for (var i = 0; i < cols && i < widths.length; i++) {
-    ths[i].style.minWidth = widths[i] + 'px';
-  }
-
   document.querySelectorAll('td[contenteditable]').forEach(function(td) {
     td.addEventListener('blur', function() {
       var r = parseInt(this.dataset.row);
       var c = parseInt(this.dataset.col);
       var raw = this.textContent.trim();
       var rows = sheets[activeSheet].rows;
-      if (this.className.indexOf('col-num') !== -1) {
+      var ct = (COL_TYPES[detectType(rows)] || [])[c] || 'text';
+      if (ct === 'int' || ct === 'dec') {
         var n = parseFloat(raw.replace(/,/g, ''));
         rows[r][c] = isNaN(n) ? raw : n;
       } else {
@@ -279,7 +258,8 @@ function syncActiveCell() {
     var c = parseInt(active.dataset.col);
     var rows = sheets[activeSheet].rows;
     var raw = active.textContent.trim();
-    if (active.className.indexOf('col-num') !== -1) {
+    var ct = (COL_TYPES[detectType(rows)] || [])[c] || 'text';
+    if (ct === 'int' || ct === 'dec') {
       var n = parseFloat(raw.replace(/,/g, ''));
       rows[r][c] = isNaN(n) ? raw : n;
     } else {
@@ -290,7 +270,6 @@ function syncActiveCell() {
 
 function copyAll() {
   syncActiveCell();
-  // 复制当前子表
   var rows = sheets[activeSheet].rows;
   var text = rows.map(function(r) { return r.join('\t'); }).join('\n');
   navigator.clipboard.writeText(text).then(function() {
@@ -309,9 +288,15 @@ function copyAll() {
 function downloadCSV() {
   syncActiveCell();
   var rows = sheets[activeSheet].rows;
+  var type = detectType(rows);
+  var colTypes = COL_TYPES[type] || [];
   var csv = '\ufeff' + rows.map(function(r) {
-    return r.map(function(v) {
-      if (typeof v === 'number') return v.toFixed(2);
+    return r.map(function(v, c) {
+      if (typeof v === 'number') {
+        var ct = colTypes[c] || 'text';
+        if (ct === 'int') return Math.round(v);
+        return v.toFixed(2);
+      }
       return '"' + String(v).replace(/"/g, '""') + '"';
     }).join(',');
   }).join('\n');
