@@ -7,7 +7,7 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#f5f7fa; color:#333; padding:16px; }
-.toolbar { display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+.toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
 .toolbar h1 { font-size:17px; color:#2f5597; margin-right:auto; }
 .btn { background:#4472C4; color:#fff; border:none; padding:7px 16px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; }
 .btn:hover { background:#36569e; }
@@ -15,7 +15,11 @@ body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#f5f7f
 .btn-green:hover { background:#009a59; }
 .btn-orange { background:#e67e22; }
 .btn-orange:hover { background:#d35400; }
-.table-wrap { background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.08); overflow:auto; max-height:calc(100vh - 70px); }
+.sheet-tabs { display:flex; gap:0; margin-bottom:0; border-bottom:2px solid #4472C4; overflow-x:auto; }
+.sheet-tab { padding:8px 18px; cursor:pointer; font-size:13px; color:#666; background:#e8ecf1; border:1px solid #d0d7e2; border-bottom:none; border-radius:6px 6px 0 0; white-space:nowrap; margin-right:2px; }
+.sheet-tab.active { background:#4472C4; color:#fff; font-weight:600; border-color:#4472C4; }
+.sheet-tab:hover:not(.active) { background:#dce6f5; }
+.table-wrap { background:#fff; border-radius:0 8px 8px 8px; box-shadow:0 1px 3px rgba(0,0,0,.08); overflow:auto; max-height:calc(100vh - 120px); }
 table { border-collapse:collapse; font-size:13px; }
 th { background:#4472C4; color:#fff; padding:8px 10px; text-align:center; font-weight:600; position:sticky; top:0; z-index:10; border:1px solid #3a5a8c; white-space:nowrap; }
 td { padding:6px 10px; border:1px solid #e0e6ed; text-align:center; vertical-align:middle; }
@@ -37,12 +41,14 @@ tr:nth-child(even) td[contenteditable="true"]:focus { background:#e8f0fe; }
   <button class="btn" onclick="downloadCSV()">⬇ 下载CSV</button>
   <button class="btn btn-orange" onclick="addRow()">➕ 加一行</button>
 </div>
+<div class="sheet-tabs" id="sheetTabs"></div>
 <div class="table-wrap">
   <table id="tbl"></table>
 </div>
-<p class="hint">点击单元格直接编辑 · 点击表头排序 · Tab键切换下一格</p>
+<p class="hint">点击单元格直接编辑 · 点击表头排序 · Tab键切换下一格 · 子表间切换顶部标签</p>
 <script>
-var data = [];
+var sheets = [];       // [{name, rows}]
+var activeSheet = 0;
 var tableType = '';
 var sortCol = -1;
 var sortAsc = true;
@@ -50,34 +56,57 @@ var SPECIAL_ID = '3823309765342266082';
 
 var COL_WIDTHS = {
   summary: [80, 180, 360, 100, 120, 120],
-  orders:  [180, 360, 90, 90, 90, 110, 110]
+  orders:  [180, 360, 100, 100, 100, 120, 120],
+  orderSummary: [100, 200, 180, 100, 140]
 };
 
-function init() {
-  try {
-    data = JSON.parse(localStorage.getItem('sheetRows') || '[]');
-    var t = localStorage.getItem('sheetTitle') || '在线表格';
-    document.getElementById('title').textContent = t;
-    document.title = t;
-  } catch(e) {}
+function detectType(rows) {
+  var h = rows[0].join('|');
+  if (h.indexOf('包装') !== -1 && h.indexOf('商品ID') !== -1) return 'summary';
+  if (h.indexOf('店铺') !== -1 && h.indexOf('商品名') !== -1) return 'orderSummary';
+  return 'orders';
+}
 
-  if (!data.length) {
+function init() {
+  var title = '在线表格';
+  try {
+    title = localStorage.getItem('sheetTitle') || '在线表格';
+    sheets = JSON.parse(localStorage.getItem('sheetSheets') || '[]');
+  } catch(e) {}
+  document.getElementById('title').textContent = title;
+  document.title = title;
+
+  if (!sheets.length) {
     document.getElementById('tbl').innerHTML = '<tr><td class="empty">没有数据，请回到主页面先汇总</td></tr>';
     return;
   }
 
-  var header = data[0].join('|');
-  if (header.indexOf('包装') !== -1 && header.indexOf('商品ID') !== -1) {
-    tableType = 'summary';
-  } else {
-    tableType = 'orders';
-  }
-
+  renderTabs();
   render();
 }
 
-function getColClass(c, header) {
-  if (tableType === 'summary') {
+function renderTabs() {
+  var html = '';
+  sheets.forEach(function(s, i) {
+    html += '<div class="sheet-tab' + (i === activeSheet ? ' active' : '') + '" onclick="switchSheet(' + i + ')">' + s.name + '</div>';
+  });
+  document.getElementById('sheetTabs').innerHTML = html;
+}
+
+function switchSheet(i) {
+  activeSheet = i;
+  sortCol = -1;
+  renderTabs();
+  render();
+}
+
+function getColClass(c, type) {
+  if (type === 'summary') {
+    if (c === 0) return 'col-text';
+    if (c === 1) return 'col-id';
+    if (c === 2) return 'col-text';
+    return 'col-num';
+  } else if (type === 'orderSummary') {
     if (c === 0) return 'col-text';
     if (c === 1) return 'col-id';
     if (c === 2) return 'col-text';
@@ -89,25 +118,26 @@ function getColClass(c, header) {
   }
 }
 
-function calcRowspan(r, c) {
-  if (data[r][c] === '' || data[r][c] === null || data[r][c] === undefined) return 0;
+function calcRowspan(rows, r, c) {
+  if (rows[r][c] === '' || rows[r][c] === null || rows[r][c] === undefined) return 0;
   var span = 1;
-  for (var i = r + 1; i < data.length; i++) {
-    var v = data[i][c];
+  for (var i = r + 1; i < rows.length; i++) {
+    var v = rows[i][c];
     if (v === '' || v === null || v === undefined) span++;
     else break;
   }
   return span;
 }
 
-function shouldMerge(col, r) {
-  if (tableType === 'summary') {
+function shouldMerge(rows, col, r, type) {
+  if (type === 'orderSummary') return false;
+  if (type === 'summary') {
     return [0, 1, 2, 5].indexOf(col) !== -1;
   } else {
     if (col === 4) {
-      var idVal = data[r][0];
+      var idVal = rows[r][0];
       for (var rr = r; rr >= 1; rr--) {
-        if (data[rr][0] !== '' && data[rr][0] !== null) { idVal = data[rr][0]; break; }
+        if (rows[rr][0] !== '' && rows[rr][0] !== null) { idVal = rows[rr][0]; break; }
       }
       if (String(idVal) === SPECIAL_ID) return false;
     }
@@ -124,32 +154,33 @@ function formatCell(v, colClass) {
 }
 
 function render() {
-  var cols = data[0].length;
-  var widths = COL_WIDTHS[tableType] || [];
+  var sheet = sheets[activeSheet];
+  var rows = sheet.rows;
+  var cols = rows[0].length;
+  var type = detectType(rows);
+  var widths = COL_WIDTHS[type] || [];
 
   var html = '<thead><tr>';
   for (var c = 0; c < cols; c++) {
     var arrow = '';
     if (sortCol === c) arrow = sortAsc ? ' ▲' : ' ▼';
-    html += '<th onclick="sortBy(' + c + ')">' + (data[0][c] === '' ? ' ' : data[0][c]) + '<span style="font-size:10px;opacity:.7">' + arrow + '</span></th>';
+    html += '<th onclick="sortBy(' + c + ')">' + (rows[0][c] === '' ? ' ' : rows[0][c]) + '<span style="font-size:10px;opacity:.7">' + arrow + '</span></th>';
   }
   html += '<th style="width:36px;position:sticky;right:0;background:#4472C4;"></th>';
   html += '</tr></thead><tbody>';
 
-  for (var r = 1; r < data.length; r++) {
+  for (var r = 1; r < rows.length; r++) {
     html += '<tr>';
     for (var c = 0; c < cols; c++) {
-      var colClass = getColClass(c, data[0]);
-      var v = data[r][c];
+      var colClass = getColClass(c, type);
+      var v = rows[r][c];
       var display = formatCell(v, colClass);
 
       var rowspan = '';
-      if (shouldMerge(c, r)) {
-        var rs = calcRowspan(r, c);
+      if (shouldMerge(rows, c, r, type)) {
+        var rs = calcRowspan(rows, r, c);
         if (rs > 1) rowspan = ' rowspan="' + rs + '"';
-        else if (rs === 0) {
-          continue;
-        }
+        else if (rs === 0) continue;
       }
 
       html += '<td class="' + colClass + '" contenteditable="true" data-row="' + r + '" data-col="' + c + '"' + rowspan + '>' + display + '</td>';
@@ -170,12 +201,12 @@ function render() {
       var r = parseInt(this.dataset.row);
       var c = parseInt(this.dataset.col);
       var raw = this.textContent.trim();
-      var colClass = this.className;
-      if (colClass.indexOf('col-num') !== -1) {
+      var rows = sheets[activeSheet].rows;
+      if (this.className.indexOf('col-num') !== -1) {
         var n = parseFloat(raw.replace(/,/g, ''));
-        data[r][c] = isNaN(n) ? raw : n;
+        rows[r][c] = isNaN(n) ? raw : n;
       } else {
-        data[r][c] = raw;
+        rows[r][c] = raw;
       }
     });
     td.addEventListener('keydown', function(e) {
@@ -188,6 +219,7 @@ function render() {
 function moveFocus(td, back) {
   var r = parseInt(td.dataset.row);
   var c = parseInt(td.dataset.col);
+  var rows = sheets[activeSheet].rows;
   var target = back
     ? document.querySelector('td[data-row="' + r + '"][data-col="' + (c - 1) + '"]')
     : document.querySelector('td[data-row="' + r + '"][data-col="' + (c + 1) + '"]');
@@ -195,7 +227,7 @@ function moveFocus(td, back) {
     var nextRow = document.querySelector('td[data-row="' + (r + 1) + '"][data-col="0"]');
     if (nextRow) nextRow.focus();
   } else if (!target && back) {
-    var prevRow = document.querySelector('td[data-row="' + (r - 1) + '"][data-col="' + (data[0].length - 1) + '"]');
+    var prevRow = document.querySelector('td[data-row="' + (r - 1) + '"][data-col="' + (rows[0].length - 1) + '"]');
     if (prevRow) prevRow.focus();
   } else if (target) {
     target.focus();
@@ -211,54 +243,58 @@ function moveFocus(td, back) {
 function sortBy(col) {
   if (sortCol === col) sortAsc = !sortAsc;
   else { sortCol = col; sortAsc = true; }
-  var bodyRows = data.slice(1);
+  var rows = sheets[activeSheet].rows;
+  var bodyRows = rows.slice(1);
   bodyRows.sort(function(a, b) {
     var va = a[col], vb = b[col];
     if (typeof va === 'number' && typeof vb === 'number') return sortAsc ? va - vb : vb - va;
     return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
   });
-  data = [data[0]].concat(bodyRows);
+  sheets[activeSheet].rows = [rows[0]].concat(bodyRows);
   render();
 }
 
 function addRow() {
-  var cols = data[0].length;
+  var rows = sheets[activeSheet].rows;
+  var cols = rows[0].length;
   var newRow = [];
   for (var i = 0; i < cols; i++) newRow.push('');
-  data.push(newRow);
+  rows.push(newRow);
   render();
-  var lastRow = data.length - 1;
+  var lastRow = rows.length - 1;
   var cell = document.querySelector('td[data-row="' + lastRow + '"][data-col="0"]');
   if (cell) cell.focus();
 }
 
 function delRow(r) {
   if (!confirm('删除第 ' + r + ' 行？')) return;
-  data.splice(r, 1);
+  sheets[activeSheet].rows.splice(r, 1);
   render();
 }
 
-function getTextData() {
+function syncActiveCell() {
   var active = document.activeElement;
   if (active && active.dataset && active.dataset.row) {
     var r = parseInt(active.dataset.row);
     var c = parseInt(active.dataset.col);
+    var rows = sheets[activeSheet].rows;
     var raw = active.textContent.trim();
     if (active.className.indexOf('col-num') !== -1) {
       var n = parseFloat(raw.replace(/,/g, ''));
-      data[r][c] = isNaN(n) ? raw : n;
+      rows[r][c] = isNaN(n) ? raw : n;
     } else {
-      data[r][c] = raw;
+      rows[r][c] = raw;
     }
   }
-  return data;
 }
 
 function copyAll() {
-  getTextData();
-  var text = data.map(function(r) { return r.join('\t'); }).join('\n');
+  syncActiveCell();
+  // 复制当前子表
+  var rows = sheets[activeSheet].rows;
+  var text = rows.map(function(r) { return r.join('\t'); }).join('\n');
   navigator.clipboard.writeText(text).then(function() {
-    alert('已复制到剪贴板，可直接粘贴到Excel');
+    alert('已复制当前子表「' + sheets[activeSheet].name + '」到剪贴板，可直接粘贴到Excel');
   }).catch(function() {
     var ta = document.createElement('textarea');
     ta.value = text;
@@ -266,13 +302,14 @@ function copyAll() {
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    alert('已复制到剪贴板');
+    alert('已复制当前子表');
   });
 }
 
 function downloadCSV() {
-  getTextData();
-  var csv = '\ufeff' + data.map(function(r) {
+  syncActiveCell();
+  var rows = sheets[activeSheet].rows;
+  var csv = '\ufeff' + rows.map(function(r) {
     return r.map(function(v) {
       if (typeof v === 'number') return v.toFixed(2);
       return '"' + String(v).replace(/"/g, '""') + '"';
@@ -281,7 +318,7 @@ function downloadCSV() {
   var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = (document.title || '汇总') + '.csv';
+  a.download = sheets[activeSheet].name + '.csv';
   a.click();
 }
 
