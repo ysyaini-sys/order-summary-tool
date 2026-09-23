@@ -198,7 +198,7 @@ const COMBO_PAIRS = [
 ];
 
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis/';
-const CORS_PROXY = 'https://corsproxy.io/?';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 async function feishuFetch(path, options){
   const url = CORS_PROXY + encodeURIComponent(FEISHU_BASE + path);
@@ -213,8 +213,10 @@ async function feishuGetToken(){
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({app_id:appId, app_secret:appSecret})
   });
-  const d = await r.json();
-  if(d.code!==0) throw new Error('获取token失败: '+d.msg);
+  const text = await r.text();
+  let d;
+  try { d = JSON.parse(text); } catch(e){ throw new Error('飞书返回异常: '+text.slice(0,200)); }
+  if(d.code!==0) throw new Error('获取token失败: '+(d.msg||text.slice(0,200)));
   return d.tenant_access_token;
 }
 
