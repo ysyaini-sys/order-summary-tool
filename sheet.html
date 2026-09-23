@@ -6,19 +6,29 @@
 <title>在线表格</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#f5f7fa; color:#333; padding:20px; }
-.toolbar { display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
-.toolbar h1 { font-size:18px; color:#2f5597; margin-right:auto; }
-.btn { background:#4472C4; color:#fff; border:none; padding:8px 18px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; }
+body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#f5f7fa; color:#333; padding:16px; }
+.toolbar { display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+.toolbar h1 { font-size:17px; color:#2f5597; margin-right:auto; }
+.btn { background:#4472C4; color:#fff; border:none; padding:7px 16px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; }
 .btn:hover { background:#36569e; }
 .btn-green { background:#00b96b; }
 .btn-green:hover { background:#009a59; }
-.table-wrap { background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.08); overflow:auto; max-height:calc(100vh - 80px); }
+.btn-orange { background:#e67e22; }
+.btn-orange:hover { background:#d35400; }
+.table-wrap { background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.08); overflow:auto; max-height:calc(100vh - 70px); }
 table { width:100%; border-collapse:collapse; font-size:13px; }
-th { background:#4472C4; color:#fff; padding:10px 12px; text-align:center; font-weight:500; position:sticky; top:0; z-index:10; }
-td { padding:8px 12px; border:1px solid #e0e6ed; text-align:center; }
+th { background:#4472C4; color:#fff; padding:9px 10px; text-align:center; font-weight:500; position:sticky; top:0; z-index:10; cursor:pointer; user-select:none; white-space:nowrap; }
+th:hover { background:#36569e; }
+th .arrow { font-size:10px; margin-left:3px; opacity:.7; }
+td { padding:7px 10px; border:1px solid #e0e6ed; text-align:center; min-width:60px; }
+td[contenteditable="true"]:focus { outline:2px solid #4472C4; background:#f0f5ff; }
+td[contenteditable="true"]:hover { background:#f8fafc; }
 tr:nth-child(even) td { background:#f8fafc; }
+tr:nth-child(even) td[contenteditable="true"]:focus { background:#e8f0fe; }
 td.num { text-align:right; font-family:Consolas,monospace; }
+.row-del { color:#e74c3c; cursor:pointer; font-weight:bold; padding:0 6px; }
+.row-del:hover { color:#c0392b; }
+.hint { font-size:11px; color:#999; margin-top:8px; }
 .empty { text-align:center; color:#999; padding:40px; font-size:14px; }
 </style>
 </head>
@@ -27,48 +37,158 @@ td.num { text-align:right; font-family:Consolas,monospace; }
   <h1 id="title">汇总数据</h1>
   <button class="btn btn-green" onclick="copyAll()">📋 复制全部</button>
   <button class="btn" onclick="downloadCSV()">⬇ 下载CSV</button>
+  <button class="btn btn-orange" onclick="addRow()">➕ 加一行</button>
 </div>
 <div class="table-wrap">
   <table id="tbl"></table>
 </div>
+<p class="hint">点击单元格直接编辑 · 点击表头排序 · Tab键切换下一格</p>
 <script>
-var rows = [];
-(function(){
+var data = [];
+var sortCol = -1;
+var sortAsc = true;
+
+function init() {
   try {
-    rows = JSON.parse(localStorage.getItem('sheetRows') || '[]');
+    data = JSON.parse(localStorage.getItem('sheetRows') || '[]');
     var t = localStorage.getItem('sheetTitle') || '在线表格';
     document.getElementById('title').textContent = t;
     document.title = t;
-  } catch(e){}
+  } catch(e) {}
 
-  if(!rows.length){
+  if (!data.length) {
     document.getElementById('tbl').innerHTML = '<tr><td class="empty">没有数据，请回到主页面先汇总</td></tr>';
     return;
   }
+  render();
+}
 
+function render() {
+  var cols = data[0].length;
   var html = '<thead><tr>';
-  rows[0].forEach(function(h){ html += '<th>' + (h === '' ? ' ' : h) + '</th>'; });
+  for (var c = 0; c < cols; c++) {
+    var arrow = '';
+    if (sortCol === c) arrow = sortAsc ? ' ▲' : ' ▼';
+    html += '<th onclick="sortBy(' + c + ')">' + (data[0][c] === '' ? ' ' : data[0][c]) + '<span class="arrow">' + arrow + '</span></th>';
+  }
+  html += '<th style="width:40px;"></th>';
   html += '</tr></thead><tbody>';
-  for(var i = 1; i < rows.length; i++){
-    html += '<tr>';
-    rows[i].forEach(function(v){
-      if(typeof v === 'number'){
-        html += '<td class="num">' + v.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
-      } else {
-        html += '<td>' + (v === '' ? ' ' : v) + '</td>';
-      }
-    });
+  for (var r = 1; r < data.length; r++) {
+    html += '<tr data-row="' + r + '">';
+    for (var c = 0; c < cols; c++) {
+      var v = data[r][c];
+      var isNum = typeof v === 'number';
+      var display = isNum ? v.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : (v === '' ? ' ' : v);
+      html += '<td class="' + (isNum ? 'num' : '') + '" contenteditable="true" data-row="' + r + '" data-col="' + c + '" data-num="' + (isNum ? 1 : 0) + '">' + display + '</td>';
+    }
+    html += '<td><span class="row-del" onclick="delRow(' + r + ')">✕</span></td>';
     html += '</tr>';
   }
   html += '</tbody>';
   document.getElementById('tbl').innerHTML = html;
-})();
 
-function copyAll(){
-  var text = rows.map(function(r){ return r.join('\t'); }).join('\n');
-  navigator.clipboard.writeText(text).then(function(){
+  var cells = document.querySelectorAll('td[contenteditable]');
+  cells.forEach(function(td) {
+    td.addEventListener('blur', function() {
+      var r = parseInt(this.dataset.row);
+      var c = parseInt(this.dataset.col);
+      var isNum = this.dataset.num === '1';
+      var raw = this.textContent.trim();
+      if (isNum) {
+        var n = parseFloat(raw.replace(/,/g, ''));
+        data[r][c] = isNaN(n) ? raw : n;
+      } else {
+        data[r][c] = raw;
+      }
+    });
+    td.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
+      if (e.key === 'Tab') { e.preventDefault(); moveFocus(this, e.shiftKey); }
+    });
+  });
+}
+
+function moveFocus(td, back) {
+  var r = parseInt(td.dataset.row);
+  var c = parseInt(td.dataset.col);
+  var target = back
+    ? document.querySelector('td[data-row="' + r + '"][data-col="' + (c - 1) + '"]')
+    : document.querySelector('td[data-row="' + r + '"][data-col="' + (c + 1) + '"]');
+  if (!target && !back) {
+    var nextRow = document.querySelector('td[data-row="' + (r + 1) + '"][data-col="0"]');
+    if (nextRow) nextRow.focus();
+  } else if (!target && back) {
+    var prevRow = document.querySelector('td[data-row="' + (r - 1) + '"][data-col="' + (data[0].length - 1) + '"]');
+    if (prevRow) prevRow.focus();
+  } else if (target) {
+    target.focus();
+    if (document.createRange) {
+      var range = document.createRange();
+      range.selectNodeContents(target);
+      range.collapse(false);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortAsc = !sortAsc;
+  else { sortCol = col; sortAsc = true; }
+
+  var bodyRows = data.slice(1);
+  bodyRows.sort(function(a, b) {
+    var va = a[col], vb = b[col];
+    if (typeof va === 'number' && typeof vb === 'number') {
+      return sortAsc ? va - vb : vb - va;
+    }
+    return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+  data = [data[0]].concat(bodyRows);
+  render();
+}
+
+function addRow() {
+  var cols = data[0].length;
+  var newRow = [];
+  for (var i = 0; i < cols; i++) newRow.push('');
+  data.push(newRow);
+  render();
+  var lastRow = data.length - 1;
+  var cell = document.querySelector('td[data-row="' + lastRow + '"][data-col="0"]');
+  if (cell) cell.focus();
+}
+
+function delRow(r) {
+  if (!confirm('删除第 ' + r + ' 行？')) return;
+  data.splice(r, 1);
+  render();
+}
+
+function getTextData() {
+  var active = document.activeElement;
+  if (active && active.dataset && active.dataset.row) {
+    var r = parseInt(active.dataset.row);
+    var c = parseInt(active.dataset.col);
+    var isNum = active.dataset.num === '1';
+    var raw = active.textContent.trim();
+    if (isNum) {
+      var n = parseFloat(raw.replace(/,/g, ''));
+      data[r][c] = isNaN(n) ? raw : n;
+    } else {
+      data[r][c] = raw;
+    }
+  }
+  return data;
+}
+
+function copyAll() {
+  getTextData();
+  var text = data.map(function(r) { return r.join('\t'); }).join('\n');
+  navigator.clipboard.writeText(text).then(function() {
     alert('已复制到剪贴板，可直接粘贴到Excel');
-  }).catch(function(){
+  }).catch(function() {
     var ta = document.createElement('textarea');
     ta.value = text;
     document.body.appendChild(ta);
@@ -79,14 +199,22 @@ function copyAll(){
   });
 }
 
-function downloadCSV(){
-  var csv = '\ufeff' + rows.map(function(r){ return r.join(','); }).join('\n');
-  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+function downloadCSV() {
+  getTextData();
+  var csv = '\ufeff' + data.map(function(r) {
+    return r.map(function(v) {
+      if (typeof v === 'number') return v.toFixed(2);
+      return '"' + String(v).replace(/"/g, '""') + '"';
+    }).join(',');
+  }).join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = (document.title || '汇总') + '.csv';
   a.click();
 }
+
+init();
 </script>
 </body>
 </html>
