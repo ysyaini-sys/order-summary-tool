@@ -584,7 +584,8 @@ function buildSummarySheet(perFileResults){
       const store=isCanned?'官方店':'饮品店';
       const productName=flavor+(isCanned?'-罐装':'-玻璃瓶');
       const k=store+'|'+productName;
-      if(!totals[k]) totals[k]={box:0,amount:0};
+      if(!totals[k]) totals[k]={box:0,amount:0,id:currentId};
+      if(!totals[k].id) totals[k].id=currentId;
       totals[k].box+=parseFloat(groupRows[0].box)||0;
       totals[k].amount+=parseFloat(groupRows[0].totalAmount)||0;
     }
@@ -614,8 +615,8 @@ function buildSummarySheet(perFileResults){
   ];
   items.forEach(([store,pid,name])=>{
     const k=store+'|'+name;
-    const t=totals[k]||{box:0,amount:0};
-    rows.push([store,pid,name,t.box,Math.round(t.amount*100)/100]);
+    const t=totals[k]||{box:0,amount:0,id:''};
+    rows.push([store,t.id||pid,name,t.box,Math.round(t.amount*100)/100]);
   });
   return {name:'汇总',rows:rows};
 }
