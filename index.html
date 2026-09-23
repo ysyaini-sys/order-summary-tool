@@ -296,21 +296,26 @@ function cfbContent(entry){
 
 async function decryptAgileXlsx(buf, password){
   var cfb = XLSX.CFB;
-  if(!cfb) throw new Error('CFB库未加载，请刷新页面');
-  var ole = cfb.read(buf);
+  if(!cfb) throw new Error('CFB未加载(XLSX.CFB不存在)');
+  if(!cfb.read) throw new Error('CFB.read不存在,类型:'+typeof cfb);
   
-  // Extract EncryptionInfo stream
+  var ole;
+  try { ole = cfb.read(buf); }
+  catch(e) { throw new Error('CFB读取失败: '+e.message); }
+  
+  var dirs = ole.FullPathDirectory || ole.FileIndex || [];
+  if(dirs.length === 0) throw new Error('CFB目录为空, keys:'+Object.keys(ole).join(','));
+  
   var encEntry = findCfbEntry(ole, 'EncryptionInfo');
-  if(!encEntry) throw new Error('文件未加密或格式不支持');
+  if(!encEntry) throw new Error('找不到EncryptionInfo, 已有流:'+dirs.map(function(d){return d.name}).join(','));
   var encInfoRaw = cfbContent(encEntry);
-  if(!encInfoRaw) throw new Error('无法读取加密信息');
+  if(!encInfoRaw) throw new Error('EncryptionInfo内容为空');
   
-  // Skip 8-byte header (version + flags), parse XML
   var encInfoXml = new TextDecoder('utf-8').decode(encInfoRaw.slice(8));
   var parser = new DOMParser();
   var xml = parser.parseFromString(encInfoXml, 'text/xml');
   var encKey = xml.getElementsByTagName('p:encryptedKey')[0] || xml.getElementsByTagName('encryptedKey')[0];
-  if(!encKey) throw new Error('不支持的加密类型');
+  if(!encKey) throw new Error('XML中找不到encryptedKey');
   
   var salt = base64ToBytes(encKey.getAttribute('saltValue'));
   var spinCount = parseInt(encKey.getAttribute('spinCount'));
