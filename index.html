@@ -278,10 +278,11 @@ function parseCSVText(text){
 
 // ===== 快手加密xlsx浏览器端解密 (Agile Encryption) =====
 function findCfbEntry(ole, name){
-  var dirs = ole.FullPathDirectory || ole.FileIndex || [];
+  var dirs = ole.FileIndex || ole.FullPathDirectory || ole.FullPathDir || [];
   for(var i=0; i<dirs.length; i++){
-    var e = dirs[i];
-    if(e.name === name || (e.name && e.name.indexOf(name) >= 0)) return e;
+    var e = dirs[i] || {};
+    var entryName = String(e.name || e.path || e.fullName || '');
+    if(entryName === name || entryName.endsWith('/'+name) || entryName.indexOf(name) >= 0) return e;
   }
   return null;
 }
@@ -301,11 +302,23 @@ async function decryptAgileXlsx(buf, password){
   if(!cfb) throw new Error('CFB未加载(XLSX.CFB不存在)');
   if(!cfb.read) throw new Error('CFB.read不存在,类型:'+typeof cfb);
   
-  var ole;
-  try { ole = cfb.read(buf); }
-  catch(e) { throw new Error('CFB读取失败: '+e.message); }
-  
-  var dirs = ole.FullPathDirectory || ole.FileIndex || [];
+  var ole, parseErrors = [];
+  var candidates = [buf];
+  if(buf && buf.buffer){
+    var start = buf.byteOffset || 0;
+    var end = start + buf.byteLength;
+    candidates.push(buf.buffer.slice(start, end));
+  }
+  for(var ci=0; ci<candidates.length && !ole; ci++){
+    var input = candidates[ci];
+    for(var oi=0; oi<2 && !ole; oi++){
+      try { ole = oi===0 ? cfb.read(input, {type:'array'}) : cfb.read(input); }
+      catch(e) { parseErrors.push(e && e.message ? e.message : String(e)); }
+    }
+  }
+  if(!ole) throw new Error('CFB读取失败：'+(parseErrors[0]||'未知格式错误'));
+
+  var dirs = ole.FileIndex || ole.FullPathDirectory || ole.FullPathDir || [];
   if(dirs.length === 0) throw new Error('CFB目录为空, keys:'+Object.keys(ole).join(','));
   
   var encEntry = findCfbEntry(ole, 'EncryptionInfo');
