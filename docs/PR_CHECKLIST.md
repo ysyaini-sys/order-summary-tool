@@ -24,3 +24,9 @@
 - [ ] PR 没有未解决的冲突
 - [ ] PR 没有未处理的审查意见
 - [ ] 合并后已打开 GitHub Pages 正式地址复查
+
+- [ ] GitHub Actions 的 `test` 检查已通过
+- [ ] 分支已更新到最新 `main`
+- [ ] `main` 分支保护规则仍然开启
+- [ ] GitHub Pages 已从合并后的 `main` 提交发布
+- [ ] 已打开 https://ysyaini-sys.github.io/order-summary-tool/ 复查正式版本
