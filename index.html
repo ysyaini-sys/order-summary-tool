@@ -629,6 +629,8 @@ async function detectDates(files, platform){
         // Step 3: 组合规格配对（抖音/快手用，视频号跳过）
         var comboPaired=new Set(), comboIdxMap={};
         if(tab!=='shipinhao'){
+          console.log('=== 组合配对调试 ===');
+          grouped.forEach((g,i)=>console.log('  ['+i+']', normalizeSpec(g.spec), 'qty='+g.qty));
           for(var pi=0;pi<COMBO_PAIRS_NORM.length;pi++){
             var pairNorm = COMBO_PAIRS_NORM[pi];
             var matched = {};
@@ -636,6 +638,7 @@ async function detectDates(files, platform){
               if(comboPaired.has(gi)) continue;
               var info = findComboPairIdx(grouped[gi].spec, comboPaired);
               if(!info || info.pairIdx!==pi) continue;
+              console.log('  匹配到组合['+pi+']: ['+gi+']', normalizeSpec(grouped[gi].spec));
               var otherNorm = info.other;
               if(matched[otherNorm] !== undefined){
                 var oIdx = matched[otherNorm];
@@ -643,12 +646,14 @@ async function detectDates(files, platform){
                 comboIdxMap[oIdx] = gi;
                 comboPaired.add(gi);
                 comboPaired.add(oIdx);
+                console.log('  ✅ 配对成功: ['+gi+'] ↔ ['+oIdx+']');
                 delete matched[otherNorm];
               } else {
                 matched[info.self] = gi;
               }
             }
           }
+          console.log('  comboIdxMap:', comboIdxMap);
         }
         // Step 3续: 计算实际数量
         grouped.forEach((g,idx)=>{
