@@ -611,7 +611,7 @@ async function detectDates(files, platform){
               if(rowDate!==targetDate) continue;
             }
             const qty=parseFloat(String(r[qtyCol]).replace(/,/g,''))||0;
-            const price=priceCol?(parseFloat(String(r[priceCol]).replace(/,/g,''))||0):0;
+            const price=priceCol?(parseFloat(String(r[priceCol]).replace(/[¥￥,，\s]/g,''))||0):0;
             var rawSpec=specCol?String(r[specCol]).trim():'';
             if(tab!=='shipinhao' && specCol==='商品属性') rawSpec=extractSpec(rawSpec);
             const prodName=nameCol?String(r[nameCol]).trim():'';
