@@ -32,12 +32,16 @@ tr:nth-child(even) td { background:#fafbfc; }
 tr:nth-child(even) td[contenteditable="true"]:focus { background:#e8f0fe; }
 .hint { font-size:11px; color:#999; margin-top:8px; }
 .empty { text-align:center; color:#999; padding:40px; font-size:14px; }
+td.sel { background:#b3d9ff !important; outline:2px solid #4472C4; }
+.table-wrap { user-select:none; -webkit-user-select:none; }
+.table-wrap td[contenteditable]:focus { user-select:text; -webkit-user-select:text; }
 </style>
 </head>
 <body>
 <div class="toolbar">
   <h1 id="title">汇总数据</h1>
   <button class="btn btn-green" onclick="copyAll()">📋 复制全部</button>
+  <button class="btn" id="btn-copy-sel" onclick="copySelection()" disabled>📋 复制选区</button>
   <button class="btn" onclick="downloadCSV()">⬇ 下载CSV</button>
   <button class="btn btn-orange" onclick="addRow()">➕ 加一行</button>
 </div>
@@ -45,7 +49,7 @@ tr:nth-child(even) td[contenteditable="true"]:focus { background:#e8f0fe; }
 <div class="table-wrap">
   <table id="tbl"></table>
 </div>
-<p class="hint">点击单元格直接编辑 · 点击表头排序 · Tab键切换下一格 · 子表间切换顶部标签</p>
+<p class="hint">点击单元格直接编辑 · 鼠标拖选区域后 Ctrl+C 复制 · 表头排序 · 子表间切换顶部标签</p>
 <script>
 var sheets = [];
 var activeSheet = 0;
@@ -307,7 +311,117 @@ function downloadCSV() {
   a.click();
 }
 
+// ===== 拖选区域复制 =====
+var selR1 = -1, selC1 = -1, selR2 = -1, selC2 = -1, dragging = false;
+
+function getCellRC(td) {
+  if (!td || !td.dataset || td.dataset.row === undefined) return null;
+  return { r: parseInt(td.dataset.row), c: parseInt(td.dataset.col) };
+}
+
+function clearSel() {
+  document.querySelectorAll('td.sel').forEach(function(t) { t.classList.remove('sel'); });
+  selR1 = selC1 = selR2 = selC2 = -1;
+  document.getElementById('btn-copy-sel').disabled = true;
+}
+
+function paintSel() {
+  document.querySelectorAll('td.sel').forEach(function(t) { t.classList.remove('sel'); });
+  if (selR1 < 0) return;
+  var rMin = Math.min(selR1, selR2), rMax = Math.max(selR1, selR2);
+  var cMin = Math.min(selC1, selC2), cMax = Math.max(selC1, selC2);
+  document.querySelectorAll('td[contenteditable]').forEach(function(td) {
+    var rc = getCellRC(td);
+    if (!rc) return;
+    // Handle rowspan: if td has rowspan and covers this row range, include it
+    var rs = parseInt(td.getAttribute('rowspan') || '1');
+    var covers = (rc.r >= rMin && rc.r <= rMax) ||
+                 (rs > 1 && rc.r < rMin && (rc.r + rs - 1) >= rMin);
+    if (rc.c >= cMin && rc.c <= cMax && covers) {
+      td.classList.add('sel');
+    }
+  });
+  document.getElementById('btn-copy-sel').disabled = false;
+}
+
+function bindSelection() {
+  var wrap = document.querySelector('.table-wrap');
+  if (!wrap) return;
+
+  wrap.addEventListener('mousedown', function(e) {
+    var td = e.target.closest('td[contenteditable]');
+    if (!td) return;
+    // If clicking inside an editable cell already focused, let text selection work
+    if (td === document.activeElement && window.getSelection().toString().length > 0) return;
+    e.preventDefault();
+    var rc = getCellRC(td);
+    if (!rc) return;
+    dragging = true;
+    selR1 = selR2 = rc.r;
+    selC1 = selC2 = rc.c;
+    paintSel();
+  });
+
+  wrap.addEventListener('mouseover', function(e) {
+    if (!dragging) return;
+    var td = e.target.closest('td[contenteditable]');
+    if (!td) return;
+    var rc = getCellRC(td);
+    if (!rc) return;
+    selR2 = rc.r;
+    selC2 = rc.c;
+    paintSel();
+  });
+
+  document.addEventListener('mouseup', function() { dragging = false; });
+
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selR1 >= 0) {
+      // Let browser handle copy if user is selecting text inside a cell
+      if (document.activeElement && document.activeElement.isContentEditable && window.getSelection().toString().length > 0) return;
+      e.preventDefault();
+      copySelection();
+    }
+    if (e.key === 'Escape') clearSel();
+  });
+}
+
+function copySelection() {
+  if (selR1 < 0) { alert('请先拖选区域'); return; }
+  syncActiveCell();
+  var rows = sheets[activeSheet].rows;
+  var rMin = Math.min(selR1, selR2), rMax = Math.max(selR1, selR2);
+  var cMin = Math.min(selC1, selC2), cMax = Math.max(selC1, selC2);
+  var lines = [];
+  for (var r = rMin; r <= rMax; r++) {
+    var cells = [];
+    for (var c = cMin; c <= cMax; c++) {
+      var v = rows[r][c];
+      if (typeof v === 'number') {
+        var ct = (COL_TYPES[detectType(rows)] || [])[c] || 'text';
+        if (ct === 'int') v = Math.round(v);
+        else if (ct === 'dec') v = v.toFixed(2);
+      }
+      cells.push(v === null || v === undefined ? '' : String(v));
+    }
+    lines.push(cells.join('\t'));
+  }
+  var text = lines.join('\n');
+  navigator.clipboard.writeText(text).then(function() {
+    alert('已复制选区 ' + (rMax-rMin+1) + ' 行 × ' + (cMax-cMin+1) + ' 列，可直接粘贴到Excel');
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('已复制选区');
+  });
+}
+
 init();
+bindSelection();
 </script>
 </body>
 </html>
