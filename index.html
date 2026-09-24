@@ -200,9 +200,9 @@ const COMBO_PAIRS = [
   ['山葡萄原汁1箱+冰白葡萄原汁1箱320ml*12罐(到手12罐)','冰白葡萄原汁1箱320ml*6罐+山葡萄原汁1箱320ml*6瓶罐320ml*12罐(到手12罐)'],
   ['冰白葡萄原汁1箱320ml*6瓶+山葡萄原汁1箱320ml*6瓶(到手12瓶)','山葡萄原汁1箱320ml*6瓶+冰白葡萄原汁1箱320ml*6瓶(到手12瓶)']
 ];
-// 规范化规格文本：去空格、统一括号，用于组合规格模糊匹配
+// 规范化规格文本：去空格、统一括号、去掉括号内容（兼容"到手12瓶"和"(2箱)"等不同后缀），用于组合规格匹配
 function normalizeSpec(s){
-  return String(s||'').replace(/\s+/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/／/g,'/');
+  return String(s||'').replace(/\s+/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/／/g,'/').replace(/\([^)]*\)/g,'');
 }
 var COMBO_PAIRS_NORM = COMBO_PAIRS.map(function(p){ return p.map(normalizeSpec); });
 function isComboSpec(spec){
@@ -595,11 +595,6 @@ async function detectDates(files, platform){
         let fileRows=[];
         for(const sn of wb.SheetNames){
           const rows=sheetToJson(wb.Sheets[sn]);
-          // DEBUG: show column names for kuaishou
-          if(tab==='kuaishou' && rows.length>0){
-            console.log('=== 快手列名 ===', Object.keys(rows[0]));
-            console.log('=== 第1行数据 ===', rows[0]);
-          }
           for(const r of rows){
             const dateCol=Object.keys(r).find(k=>/支付完成时间|订单支付时间|支付时间/i.test(k));
             const idCol=Object.keys(r).find(k=>/商品ID|商品id|商品编码\(平台\)/i.test(k));
