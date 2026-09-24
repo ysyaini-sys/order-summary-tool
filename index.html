@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>电商订单汇总工具</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background:#f5f7fa; color:#333; height:100vh; overflow:hidden; display:flex; flex-direction:column; }
@@ -361,7 +362,12 @@ async function decryptAgileXlsx(buf, password){
   var cat=(a,b)=>{var x=new Uint8Array(a.length+b.length);x.set(a);x.set(b,a.length);return x;};
   var fit=(x,n)=>{var y=new Uint8Array(n);y.set(x.slice(0,n));if(x.length<n)y.fill(0x36,x.length);return y;};
   var derive=async block=>{var h=await hashBytes(cat(salt,strToUtf16le(password)));for(var i=0;i<spin;i++)h=await hashBytes(cat(u32(i),h));return fit(await hashBytes(cat(h,new Uint8Array(block))),keyBits/8);};
-  var aes=async (keyBytes,iv,data)=>{var k=await crypto.subtle.importKey('raw',keyBytes,{name:'AES-CBC'},false,['decrypt']);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-CBC',iv:fit(iv,blockSize)},k,data));};
+  var aes=async (keyBytes,iv,data)=>{
+    if(!window.CryptoJS) throw new Error('AES解密组件未加载，请检查网络后刷新页面');
+    var wa=function(x){return CryptoJS.lib.WordArray.create(x);};
+    var dec=CryptoJS.AES.decrypt({ciphertext:wa(data)},wa(keyBytes),{iv:wa(fit(iv,blockSize)),mode:CryptoJS.mode.CBC,padding:CryptoJS.pad.NoPadding});
+    var out=new Uint8Array(dec.sigBytes); for(var z=0;z<dec.sigBytes;z++) out[z]=(dec.words[z>>>2] >>> (24-(z%4)*8)) & 255; return out;
+  };
   var k1=await derive([0xFE,0xA7,0xD2,0x76,0x3B,0x4B,0x9E,0x79]);
   var k2=await derive([0xD7,0xAA,0x0F,0x6D,0x30,0x61,0x34,0x4E]);
   var k3=await derive([0x14,0x6E,0x0B,0xE7,0xAB,0xAC,0xD0,0xD6]);
@@ -377,7 +383,7 @@ async function decryptAgileXlsx(buf, password){
   for(var off=0,seg=0;off<body.length;off+=4096,seg++){
     var part=body.slice(off,Math.min(off+4096,body.length));
     var iv=fit(await (async()=>{var h=await hashBytes(cat(keyDataSalt,u32(seg)));return h;})(),dataBlock);
-    out.push(await (async()=>{var k=await crypto.subtle.importKey('raw',contentKey,{name:'AES-CBC'},false,['decrypt']);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-CBC',iv:iv},k,part));})());
+    out.push(await aes(contentKey,iv,part));
   }
   var total=out.reduce((n,x)=>n+x.length,0), dec=new Uint8Array(total), pos=0; out.forEach(x=>{dec.set(x,pos);pos+=x.length;});
   return dec.slice(0,size);
