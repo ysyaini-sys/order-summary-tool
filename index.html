@@ -322,98 +322,65 @@ function cfbContent(entry){
 
 async function decryptAgileXlsx(buf, password){
   var cfb = XLSX.CFB;
-  if(!cfb) throw new Error('CFB未加载(XLSX.CFB不存在)');
-  if(!cfb.read) throw new Error('CFB.read不存在,类型:'+typeof cfb);
-  
+  if(!cfb || !cfb.read) throw new Error('CFB容器解析不可用，请刷新页面后重试');
   var ole, parseErrors = [];
-  var candidates = [buf];
-  if(buf && buf.buffer){
-    var start = buf.byteOffset || 0;
-    var end = start + buf.byteLength;
-    candidates.push(buf.buffer.slice(start, end));
-  }
+  var candidates = [buf, buf && buf.buffer ? buf.buffer.slice(buf.byteOffset||0,(buf.byteOffset||0)+buf.byteLength) : null].filter(Boolean);
   for(var ci=0; ci<candidates.length && !ole; ci++){
-    var input = candidates[ci];
-    for(var oi=0; oi<2 && !ole; oi++){
-      try { ole = oi===0 ? cfb.read(input, {type:'array'}) : cfb.read(input); }
+    var input=candidates[ci];
+    var attempts = [{type:'buffer'},{type:'array'},{}];
+    for(var oi=0; oi<attempts.length && !ole; oi++){
+      try { ole = cfb.read(input, attempts[oi]); }
       catch(e) { parseErrors.push(e && e.message ? e.message : String(e)); }
     }
   }
-  if(!ole) throw new Error('CFB读取失败：'+(parseErrors[0]||'未知格式错误'));
-
+  if(!ole) throw new Error('CFB容器读取失败：'+(parseErrors[0]||'文件格式不受支持'));
   var dirs = ole.FileIndex || ole.FullPathDirectory || ole.FullPathDir || [];
-  if(dirs.length === 0) throw new Error('CFB目录为空, keys:'+Object.keys(ole).join(','));
-  
-  var encEntry = findCfbEntry(ole, 'EncryptionInfo');
-  if(!encEntry) throw new Error('找不到EncryptionInfo, 已有流:'+dirs.map(function(d){return d.name}).join(','));
-  var encInfoRaw = cfbContent(encEntry);
-  if(!encInfoRaw) throw new Error('EncryptionInfo内容为空');
-  
-  var encInfoXml = new TextDecoder('utf-8').decode(encInfoRaw.slice(8));
-  var parser = new DOMParser();
-  var xml = parser.parseFromString(encInfoXml, 'text/xml');
-  var encKey = xml.getElementsByTagName('p:encryptedKey')[0] || xml.getElementsByTagName('encryptedKey')[0];
-  if(!encKey) throw new Error('XML中找不到encryptedKey');
-  
-  var salt = base64ToBytes(encKey.getAttribute('saltValue'));
-  var spinCount = parseInt(encKey.getAttribute('spinCount'));
-  var keyBits = parseInt(encKey.getAttribute('keyBits'));
-  var encryptedKeyValue = base64ToBytes(encKey.getAttribute('encryptedKeyValue'));
-  var encryptedVerifierHashInput = base64ToBytes(encKey.getAttribute('encryptedVerifierHashInput'));
-  var encryptedVerifierHashValue = base64ToBytes(encKey.getAttribute('encryptedVerifierHashValue'));
-  
-  // Derive key: H = SHA1(salt + utf16le(password)), then iterate
-  var pwBytes = strToUtf16le(password);
-  
-  var h = await crypto.subtle.digest('SHA-1', concatBytes(salt, pwBytes));
-  for(var i = 1; i <= spinCount; i++){
-    var iBuf = new ArrayBuffer(4);
-    new DataView(iBuf).setUint32(0, i, true);
-    h = await crypto.subtle.digest('SHA-1', concatBytes(new Uint8Array(h), new Uint8Array(iBuf)));
+  if(!dirs.length) throw new Error('CFB目录为空，文件可能不是快手加密表格');
+  var encEntry=findCfbEntry(ole,'EncryptionInfo');
+  if(!encEntry) throw new Error('找不到EncryptionInfo加密信息流');
+  var raw=cfbContent(encEntry);
+  if(!raw || raw.length<9) throw new Error('EncryptionInfo内容为空或损坏');
+  var xml=new DOMParser().parseFromString(new TextDecoder('utf-8').decode(raw.slice(8)),'text/xml');
+  var key=xml.getElementsByTagName('p:encryptedKey')[0] || xml.getElementsByTagName('encryptedKey')[0];
+  var kd=xml.getElementsByTagName('keyData')[0];
+  if(!key || !kd) throw new Error('加密参数缺少encryptedKey或keyData');
+  var attr=(el,n,d)=>el.getAttribute(n)||d;
+  var alg=(attr(key,'hashAlgorithm',attr(kd,'hashAlgorithm','SHA512'))||'SHA512').toUpperCase().replace('-','');
+  var blockSize=parseInt(attr(key,'blockSize',attr(kd,'blockSize','16')),10)||16;
+  var keyBits=parseInt(attr(key,'keyBits',attr(kd,'keyBits','256')),10)||256;
+  var spin=parseInt(attr(key,'spinCount','100000'),10)||100000;
+  var salt=base64ToBytes(attr(key,'saltValue',''));
+  var keyDataSalt=base64ToBytes(attr(kd,'saltValue',attr(key,'saltValue','')));
+  var encryptedKeyValue=base64ToBytes(attr(key,'encryptedKeyValue',''));
+  var verifierInput=base64ToBytes(attr(key,'encryptedVerifierHashInput',''));
+  var verifierValue=base64ToBytes(attr(key,'encryptedVerifierHashValue',''));
+  if(!salt.length || !encryptedKeyValue.length) throw new Error('加密参数不完整');
+  var hashName={SHA1:'SHA-1',SHA256:'SHA-256',SHA384:'SHA-384',SHA512:'SHA-512'}[alg]||'SHA-512';
+  var hashBytes=async d=>new Uint8Array(await crypto.subtle.digest(hashName,d));
+  var u32=n=>{var x=new Uint8Array(4);new DataView(x.buffer).setUint32(0,n,true);return x;};
+  var cat=(a,b)=>{var x=new Uint8Array(a.length+b.length);x.set(a);x.set(b,a.length);return x;};
+  var fit=(x,n)=>{var y=new Uint8Array(n);y.set(x.slice(0,n));if(x.length<n)y.fill(0x36,x.length);return y;};
+  var derive=async block=>{var h=await hashBytes(cat(salt,strToUtf16le(password)));for(var i=0;i<spin;i++)h=await hashBytes(cat(u32(i),h));return fit(await hashBytes(cat(h,new Uint8Array(block))),keyBits/8);};
+  var aes=async (keyBytes,iv,data)=>{var k=await crypto.subtle.importKey('raw',keyBytes,{name:'AES-CBC'},false,['decrypt']);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-CBC',iv:fit(iv,blockSize)},k,data));};
+  var k1=await derive([0xFE,0xA7,0xD2,0x76,0x3B,0x4B,0x9E,0x79]);
+  var k2=await derive([0xD7,0xAA,0x0F,0x6D,0x30,0x61,0x34,0x4E]);
+  var k3=await derive([0x14,0x6E,0x0B,0xE7,0xAB,0xAC,0xD0,0xD6]);
+  var vi=await aes(k1,salt,verifierInput), vv=await aes(k2,salt,verifierValue);
+  var vh=await hashBytes(vi), ok=true; for(var j=0;j<vh.length;j++){if(vh[j]!==vv[j]){ok=false;break;}}
+  if(!ok) throw new Error('密码校验失败，请确认密码正确');
+  var contentKey=(await aes(k3,salt,encryptedKeyValue)).slice(0,keyBits/8);
+  var pkgEntry=findCfbEntry(ole,'EncryptedPackage'); if(!pkgEntry) throw new Error('找不到EncryptedPackage数据流');
+  var pkg=cfbContent(pkgEntry); if(!pkg || pkg.length<8) throw new Error('EncryptedPackage数据为空或损坏');
+  var size=Number(new DataView(pkg.buffer,pkg.byteOffset,pkg.byteLength).getBigUint64(0,true));
+  var body=pkg.slice(8), out=[];
+  var dataBlock=parseInt(attr(kd,'blockSize','16'),10)||16;
+  for(var off=0,seg=0;off<body.length;off+=4096,seg++){
+    var part=body.slice(off,Math.min(off+4096,body.length));
+    var iv=fit(await (async()=>{var h=await hashBytes(cat(keyDataSalt,u32(seg)));return h;})(),dataBlock);
+    out.push(await (async()=>{var k=await crypto.subtle.importKey('raw',contentKey,{name:'AES-CBC'},false,['decrypt']);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-CBC',iv:iv},k,part));})());
   }
-  
-  var derivedKey = new Uint8Array(h).slice(0, keyBits/8);
-  
-  // Import derived key for AES-CBC
-  var aesKey = await crypto.subtle.importKey('raw', derivedKey, {name:'AES-CBC'}, false, ['decrypt']);
-  
-  // Decrypt encryptedKeyValue → content key
-  var contentKeyRaw = await crypto.subtle.decrypt(
-    {name:'AES-CBC', iv: salt}, aesKey, encryptedKeyValue
-  );
-  var contentKey = new Uint8Array(contentKeyRaw);
-  
-  // Verify password
-  var verifierHashInput = new Uint8Array(await crypto.subtle.decrypt(
-    {name:'AES-CBC', iv: salt}, aesKey, encryptedVerifierHashInput
-  ));
-  var verifierHashValue = new Uint8Array(await crypto.subtle.decrypt(
-    {name:'AES-CBC', iv: salt}, aesKey, encryptedVerifierHashValue
-  ));
-  var computedHash = new Uint8Array(await crypto.subtle.digest('SHA-1', verifierHashInput));
-  var match = true;
-  for(var j = 0; j < 20; j++){
-    if(computedHash[j] !== verifierHashValue[j]){ match = false; break; }
-  }
-  if(!match) throw new Error('密码错误');
-  
-  // Decrypt EncryptedPackage
-  var pkgEntry = findCfbEntry(ole, 'EncryptedPackage');
-  if(!pkgEntry) throw new Error('找不到加密数据');
-  var pkgData = cfbContent(pkgEntry);
-  if(!pkgData) throw new Error('无法读取加密数据');
-  
-  // First 8 bytes = unencrypted size (LE uint64)
-  var dataSize = Number(new DataView(pkgData.buffer, pkgData.byteOffset, pkgData.byteLength).getBigUint64(0, true));
-  var encryptedData = pkgData.slice(8);
-  
-  // Decrypt with content key, IV = salt
-  var contentAesKey = await crypto.subtle.importKey('raw', contentKey, {name:'AES-CBC'}, false, ['decrypt']);
-  var decrypted = await crypto.subtle.decrypt(
-    {name:'AES-CBC', iv: salt}, contentAesKey, encryptedData
-  );
-  
-  return new Uint8Array(decrypted).slice(0, dataSize);
+  var total=out.reduce((n,x)=>n+x.length,0), dec=new Uint8Array(total), pos=0; out.forEach(x=>{dec.set(x,pos);pos+=x.length;});
+  return dec.slice(0,size);
 }
 
 function base64ToBytes(b64){
