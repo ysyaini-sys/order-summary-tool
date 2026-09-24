@@ -23,13 +23,12 @@ body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#f5f7f
 table { border-collapse:collapse; font-size:13px; width:100%; }
 th { background:#4472C4; color:#fff; padding:8px 10px; text-align:center; font-weight:600; position:sticky; top:0; z-index:10; border:1px solid #3a5a8c; white-space:nowrap; }
 td { padding:6px 10px; border:1px solid #e0e6ed; text-align:center; vertical-align:middle; }
-td.col-id { font-family:Consolas,Monaco,monospace; text-align:center; white-space:nowrap; }
-td.col-int { text-align:center; font-family:Consolas,Monaco,monospace; white-space:nowrap; }
-td.col-dec { text-align:right; font-family:Consolas,Monaco,monospace; white-space:nowrap; }
-td[contenteditable="true"]:focus { outline:2px solid #4472C4; background:#e8f0fe; }
-td[contenteditable="true"]:hover { background:#f8fafc; }
+td.col-id { font-family:Consolas,Monaco,monospace; text-align:center; white-space:nowrap; cursor:cell; }
+td.col-int { text-align:center; font-family:Consolas,Monaco,monospace; white-space:nowrap; cursor:cell; }
+td.col-dec { text-align:right; font-family:Consolas,Monaco,monospace; white-space:nowrap; cursor:cell; }
+td[contenteditable="true"] { cursor:text; }
+td[contenteditable="true"]:focus { outline:2px solid #4472C4; background:#e8f0fe !important; }
 tr:nth-child(even) td { background:#fafbfc; }
-tr:nth-child(even) td[contenteditable="true"]:focus { background:#e8f0fe; }
 .hint { font-size:11px; color:#999; margin-top:8px; }
 .empty { text-align:center; color:#999; padding:40px; font-size:14px; }
 td.sel { background:#b3d9ff !important; outline:2px solid #4472C4; }
@@ -170,7 +169,7 @@ function render() {
         else if (rs === 0) continue;
       }
 
-      html += '<td class="col-' + ct + '" contenteditable="true" data-row="' + r + '" data-col="' + c + '"' + rowspan + '>' + display + '</td>';
+      html += '<td class="col-' + ct + '" data-row="' + r + '" data-col="' + c + '"' + rowspan + '>' + display + '</td>';
     }
     html += '<td style="text-align:center;cursor:pointer;color:#e74c3c;" onclick="delRow(' + r + ')">✕</td>';
     html += '</tr>';
@@ -178,23 +177,41 @@ function render() {
   html += '</tbody>';
   document.getElementById('tbl').innerHTML = html;
 
-  document.querySelectorAll('td[contenteditable]').forEach(function(td) {
-    td.addEventListener('blur', function() {
-      var r = parseInt(this.dataset.row);
-      var c = parseInt(this.dataset.col);
-      var raw = this.textContent.trim();
-      var rows = sheets[activeSheet].rows;
-      var ct = (COL_TYPES[detectType(rows)] || [])[c] || 'text';
-      if (ct === 'int' || ct === 'dec') {
-        var n = parseFloat(raw.replace(/,/g, ''));
-        rows[r][c] = isNaN(n) ? raw : n;
-      } else {
-        rows[r][c] = raw;
-      }
-    });
-    td.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
-      if (e.key === 'Tab') { e.preventDefault(); moveFocus(this, e.shiftKey); }
+  // Double-click to edit a cell
+  document.querySelectorAll('td[data-row]').forEach(function(td) {
+    td.addEventListener('dblclick', function(e) {
+      e.stopPropagation();
+      this.contentEditable = 'true';
+      this.focus();
+      // Select all text in cell
+      var range = document.createRange();
+      range.selectNodeContents(this);
+      range.collapse(false);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      var self = this;
+      this.onblur = function() {
+        self.contentEditable = 'false';
+        var r = parseInt(self.dataset.row);
+        var c = parseInt(self.dataset.col);
+        var raw = self.textContent.trim();
+        var rows = sheets[activeSheet].rows;
+        var ct = (COL_TYPES[detectType(rows)] || [])[c] || 'text';
+        if (ct === 'int' || ct === 'dec') {
+          var n = parseFloat(raw.replace(/,/g, ''));
+          rows[r][c] = isNaN(n) ? raw : n;
+        } else {
+          rows[r][c] = raw;
+        }
+        // Re-render to show formatted value
+        render();
+      };
+      this.onkeydown = function(ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); self.blur(); }
+        if (ev.key === 'Escape') { self.textContent = ''; self.blur(); }
+      };
     });
   });
 }
@@ -330,7 +347,7 @@ function paintSel() {
   if (selR1 < 0) return;
   var rMin = Math.min(selR1, selR2), rMax = Math.max(selR1, selR2);
   var cMin = Math.min(selC1, selC2), cMax = Math.max(selC1, selC2);
-  document.querySelectorAll('td[contenteditable]').forEach(function(td) {
+  document.querySelectorAll('td[data-row]').forEach(function(td) {
     var rc = getCellRC(td);
     if (!rc) return;
     // Handle rowspan: if td has rowspan and covers this row range, include it
@@ -349,10 +366,10 @@ function bindSelection() {
   if (!wrap) return;
 
   wrap.addEventListener('mousedown', function(e) {
-    var td = e.target.closest('td[contenteditable]');
+    var td = e.target.closest('td[data-row]');
     if (!td) return;
-    // If clicking inside an editable cell already focused, let text selection work
-    if (td === document.activeElement && window.getSelection().toString().length > 0) return;
+    // If currently editing a cell, let text selection work
+    if (td.contentEditable === 'true') return;
     e.preventDefault();
     var rc = getCellRC(td);
     if (!rc) return;
@@ -364,7 +381,7 @@ function bindSelection() {
 
   wrap.addEventListener('mouseover', function(e) {
     if (!dragging) return;
-    var td = e.target.closest('td[contenteditable]');
+    var td = e.target.closest('td[data-row]');
     if (!td) return;
     var rc = getCellRC(td);
     if (!rc) return;
