@@ -58,7 +58,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     <section id="overview" class="page active">
       <div class="kpis"><div class="card"><small>整体消耗 · 商品</small><strong id="kpi-cost">—</strong><em>来自商品明细</em></div><div class="card"><small>成交金额 · 商品</small><strong id="kpi-sales">—</strong><em>采用源文件「净成交金额」</em></div><div class="card"><small>整体消耗 ROI</small><strong id="kpi-roi">—</strong><em>成交金额合计 ÷ 整体消耗合计</em></div></div>
       <div class="panel"><div class="panel-head"><h2>账户对比</h2><span class="sub">按商品整体消耗排序</span></div><div id="account-chart"></div></div>
-      <div class="two-col"><div class="panel"><div class="panel-head"><h2>商品投入前 5</h2><span class="sub">消耗 / 成交 / ROI</span></div><div id="product-top"></div></div><div class="panel"><div class="panel-head"><h2>视频素材投入前 5</h2><span class="sub">消耗 / 成交 / ROI · 素材维度不计入商品总额</span></div><div id="video-top"></div></div></div>
+      <div class="two-col"><div class="panel"><div class="panel-head"><h2>商品投入前 5</h2><span class="sub">同商品ID跨账户汇总 · 消耗/成交/ROI</span></div><div id="product-top"></div></div><div class="panel"><div class="panel-head"><h2>视频素材投入前 5</h2><span class="sub">消耗/成交/ROI · 素材维度不计入商品总额</span></div><div id="video-top"></div></div></div>
     </section>
     <section id="products" class="page"><div class="panel"><div class="panel-head"><h2>商品明细</h2><span class="sub" id="product-count"></span></div><div class="tablewrap" id="product-table"></div></div></section>
     <section id="videos" class="page"><div class="panel"><div class="panel-head"><h2>视频素材明细</h2><span class="sub" id="video-count"></span></div><div class="tablewrap" id="video-table"></div></div></section>
@@ -124,6 +124,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     function draw(){
       const products=selected('product'), videos=selected('video');
       const p=group(products,r=>JSON.stringify([r.account,r.id])), v=group(videos,r=>JSON.stringify([r.account,r.id]));
+      const pTop=group(products,r=>r.id);
       const cost=products.reduce((s,r)=>s+(Number(r.cost)||0),0), sales=products.reduce((s,r)=>s+(Number(r.sales)||0),0);
       $('kpi-cost').textContent=fmt(cost); $('kpi-sales').textContent=fmt(sales); $('kpi-roi').textContent=roiText(cost,sales);
       $('selection-note').textContent=`${products.length} 条商品日期行 · ${videos.length} 条视频日期行`;
@@ -131,7 +132,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
       $('video-count').textContent=`${v.length} 条视频素材 · 按成本降序`;
       $('product-table').innerHTML=detailTable(p,'product');
       $('video-table').innerHTML=detailTable(v,'video');
-      $('product-top').innerHTML=topList(p); $('video-top').innerHTML=topList(v);
+      $('product-top').innerHTML=topList(pTop); $('video-top').innerHTML=topList(v);
       const groups=group(products,r=>r.account).sort((a,b)=>b.cost-a.cost), max=Math.max(1,...groups.map(r=>r.cost));
       $('account-chart').innerHTML=groups.length?'<div class="account-row account-head"><div>账户</div><div>消耗占比</div><div class="num">整体消耗</div><div class="num">成交金额</div><div class="num">ROI</div></div>'+groups.map(r=>`<div class="account-row"><div class="account-name" title="${escapeHtml(r.account)}">${escapeHtml(r.account)}</div><div class="bartrack"><div class="barfill" style="width:${Math.max(1,r.cost/max*100).toFixed(2)}%"></div></div><div class="num">${fmt(r.cost)}</div><div class="num">${fmt(r.sales)}</div><div class="num roi ${r.cost>0&&r.sales/r.cost<1?'weak':''}">${roiText(r.cost,r.sales)}</div></div>`).join(''):'<div class="empty">当前筛选条件下没有商品数据</div>';
     }
