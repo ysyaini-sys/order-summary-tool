@@ -580,6 +580,7 @@ async function detectDates(files, platform){
   document.getElementById('btn-process-'+tab).addEventListener('click', async ()=>{
     const files = uploads[tab].getFiles();
     if(files.length===0){ showMsg(tab,'err','请先上传文件'); return; }
+    if(tab==='kuaishou' && !selectedDate && window._kuaishouDate) selectedDate = window._kuaishouDate;
     if(!selectedDate){ showMsg(tab,'err','未识别到日期'); return; }
     const targetDate = selectedDate;
     showMsg(tab,'warn','正在处理 '+targetDate+'...');
