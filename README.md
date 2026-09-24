@@ -28,3 +28,17 @@
 压缩包中的 `运行分析.cmd → analyze.ps1 → report-template.html → qianchuan-report.html` 流程，替换为 `选择文件 → SheetJS → Qianchuan.analyze → 报告展示/导出`。原脚本依赖 PowerShell 与 .NET ZIP/XML，默认路径写死为 `D:\千川商品分析工具\分析文件`，与其使用说明中的下载目录描述不同；网页集成不依赖这一路径。附件自带 Excel 和已生成的业务报告不进入仓库。
 
 运行测试：`node --test tests/*.test.js`（Node 18+，无需安装包）。本次不涉及此前搁置的订单汇总与飞书表格结果差异。
+
+## 开发与测试
+
+本项目使用分支和 Pull Request 协作。不要直接向 `main` 推送；Codex 和豆包各自使用独立分支，测试通过并经用户确认后再合并。
+
+本地测试命令：
+
+```bash
+node --test tests/*.test.js
+```
+
+GitHub Actions 会在每个面向 `main` 的 Pull Request 和每次合并到 `main` 后自动运行同一组测试。GitHub Pages 只从 `main` 发布正式网站。
+
+协作规则见 [DOUBAO_WORKFLOW.md](DOUBAO_WORKFLOW.md)，架构见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)，合并前检查见 [docs/PR_CHECKLIST.md](docs/PR_CHECKLIST.md)。
