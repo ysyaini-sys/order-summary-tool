@@ -28,7 +28,12 @@
       const kind = m[3]==='商品数据明细'?'product':'video';
       const idCol = kind==='product'?'商品ID':'素材ID', nameCol=kind==='product'?'商品名称':'素材视频名称';
       const headers = rows[0].map(text);
-      const missing = ['日期','综合成本','净成交金额','综合营销ROI',idCol,nameCol].filter(h=>!headers.includes(h));
+      // 兼容列名：优先"整体消耗"，回退"综合成本"
+      const costCol = headers.includes('整体消耗') ? '整体消耗' : (headers.includes('综合成本') ? '综合成本' : null);
+      const roiCol = headers.includes('整体消耗ROI') ? '整体消耗ROI' : (headers.includes('综合营销ROI') ? '综合营销ROI' : null);
+      const missing = ['日期','净成交金额',idCol,nameCol].filter(h=>!headers.includes(h));
+      if (!costCol) missing.push('整体消耗');
+      if (!roiCol) missing.push('ROI');
       if (missing.length) {report.warnings.push(`字段不完整：${file.name}；缺少 ${missing.join('、')}`);continue;}
       report.fileCount++;
       for (const row of rows.slice(1)) {
@@ -37,12 +42,12 @@
         const day=date(get('日期')), rawId=get(idCol), id=text(rawId);
         if (!day || !id) {report.ignoredRows++;continue;}
         if (typeof rawId==='number' && !Number.isSafeInteger(rawId)) {report.warnings.push(`ID 超出数字精度，已跳过；请将源 ID 保存为文本：${file.name} / ${day}`);report.ignoredRows++;continue;}
-        const cost=number(get('综合成本')), sales=number(get('净成交金额'));
+        const cost=number(get(costCol)), sales=number(get('净成交金额'));
         if (cost===null || sales===null) {
           report.warnings.push(`金额缺失：${file.name} / ${day} / ${id}；${kind==='product'?'商品行已排除':'素材相关指标不可用'}`);
           if (kind==='product') {report.ignoredRows++;continue;}
         }
-        const record={kind,account:m[1],date:day,id,name:text(get(nameCol)),created:kind==='video'?text(get('素材创建时间')):'',cost,sales,sourceRoi:number(get('综合营销ROI')),source:file.name};
+        const record={kind,account:m[1],date:day,id,name:text(get(nameCol)),created:kind==='video'?text(get('素材创建时间')):'',cost,sales,sourceRoi:number(get(roiCol)),source:file.name};
         const key=JSON.stringify([kind,m[1],day,id]), old=map.get(key);
         if (old && (old.cost!==cost || old.sales!==sales)) report.warnings.push(`重复数据数值不同，采用较新文件（修改时间相同则按文件名及行顺序）：${m[1]} / ${day} / ${id}`);
         map.set(key,record);
