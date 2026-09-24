@@ -214,9 +214,14 @@ function isComboSpec(spec){
 }
 function findComboPairIdx(spec, pairedSet){
   var n = normalizeSpec(spec);
-  for(var i=0;i<COMBO_PAIRS_NORM.length;i++){
-    var a = COMBO_PAIRS_NORM[i][0], b = COMBO_PAIRS_NORM[i][1];
-    if(n===a || n===b) return {pairIdx:i, self:n, other:n===a?b:a};
+  // 瓶组合：包含"+"且同时含"山葡萄"和"冰白葡萄"
+  if(n.indexOf('+')>=0 && n.indexOf('山葡萄')>=0 && n.indexOf('冰白葡萄')>=0){
+    // 判断方向：山葡萄在前还是冰白在前
+    if(n.indexOf('山葡萄') < n.indexOf('冰白葡萄')){
+      return {pairIdx:1, self:'瓶A', other:'瓶B'};
+    } else {
+      return {pairIdx:1, self:'瓶B', other:'瓶A'};
+    }
   }
   return null;
 }
@@ -629,8 +634,6 @@ async function detectDates(files, platform){
         // Step 3: 组合规格配对（抖音/快手用，视频号跳过）
         var comboPaired=new Set(), comboIdxMap={};
         if(tab!=='shipinhao'){
-          console.log('=== 组合配对调试 ===');
-          grouped.forEach((g,i)=>console.log('  ['+i+']', normalizeSpec(g.spec), 'qty='+g.qty));
           for(var pi=0;pi<COMBO_PAIRS_NORM.length;pi++){
             var pairNorm = COMBO_PAIRS_NORM[pi];
             var matched = {};
@@ -638,7 +641,6 @@ async function detectDates(files, platform){
               if(comboPaired.has(gi)) continue;
               var info = findComboPairIdx(grouped[gi].spec, comboPaired);
               if(!info || info.pairIdx!==pi) continue;
-              console.log('  匹配到组合['+pi+']: ['+gi+']', normalizeSpec(grouped[gi].spec));
               var otherNorm = info.other;
               if(matched[otherNorm] !== undefined){
                 var oIdx = matched[otherNorm];
@@ -646,14 +648,12 @@ async function detectDates(files, platform){
                 comboIdxMap[oIdx] = gi;
                 comboPaired.add(gi);
                 comboPaired.add(oIdx);
-                console.log('  ✅ 配对成功: ['+gi+'] ↔ ['+oIdx+']');
                 delete matched[otherNorm];
               } else {
                 matched[info.self] = gi;
               }
             }
           }
-          console.log('  comboIdxMap:', comboIdxMap);
         }
         // Step 3续: 计算实际数量
         grouped.forEach((g,idx)=>{
