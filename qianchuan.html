@@ -37,7 +37,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
 .btn,#import-button,#export-button{border:1px solid transparent;border-radius:6px;padding:9px 16px;background:linear-gradient(#303846,#202733);color:#fff;font-size:13px;min-height:38px;font-weight:500;cursor:pointer;box-shadow:0 2px 4px #2027330a}.btn:hover,#import-button:hover,#export-button:hover{background:#414b5a}.btn-secondary,.btn-automa,.btn-sheet,#export-button{background:#fff;color:#3b485b;border-color:#dce3ec;box-shadow:none}.btn-secondary:hover,.btn-automa:hover,.btn-sheet:hover,#export-button:hover{background:#f2f5f9;color:#202733}.btn:disabled,#import-button:disabled,#export-button:disabled{background:#edf0f4;color:#8490a0;border-color:transparent;cursor:not-allowed;box-shadow:none}
 .result-box{margin-top:18px;padding-top:18px;overflow:visible}.result-msg{font-size:13px;border-radius:7px;padding:10px 12px}.stats{gap:10px}.stat{background:#f5f7fa;border-radius:8px;padding:12px 16px}.stat .label{color:#687587;font-size:12px}.stat .value{color:#202733;font-size:21px;font-variant-numeric:tabular-nums}.table-wrap{max-height:480px;overflow:auto;margin-top:10px;min-width:0}table{font-size:13px}th{background:#f0f3f7;color:#637085;font-weight:500;padding:11px 12px}td{padding:10px 12px;border:0;border-bottom:1px solid #edf0f4}tr:nth-child(even) td{background:#fcfdfe}tr:hover td{background:#f7f9fc}td.num{font-family:inherit;font-variant-numeric:tabular-nums}
 .shell{max-width:1440px;padding:0 40px 60px}.shell .hero{max-width:none}.card,.panel{border:1px solid rgba(234,238,243,.65);border-radius:12px;background:rgba(255,255,255,.94);box-shadow:var(--shadow);backdrop-filter:none}.panel{padding:24px}.panel h2{font-size:17px;letter-spacing:-.02em}.kpis{gap:16px}.card{padding:24px;min-height:144px}.card:nth-child(n){border-top:1px solid rgba(234,238,243,.65);background:rgba(255,255,255,.94)}.card small{font-size:13px;font-weight:500;margin-bottom:18px}.card strong{font-size:clamp(26px,2.7vw,38px);letter-spacing:-.035em;font-weight:650}.card em{font-size:12px}.toolbar{margin:20px 0;padding:16px 20px;gap:20px;background:rgba(255,255,255,.8);box-shadow:none;border:1px solid #edf0f4;border-radius:9px;backdrop-filter:none}.control label{font-size:12px}.control input,.control select{border-radius:6px;height:38px;font-size:13px}.tabs{gap:26px}.tab{font-size:14px}.tab[aria-selected=true]{color:#202733;box-shadow:inset 0 -2px #0071e3}.bartrack{background:#edf0f4;height:6px}.barfill{background:linear-gradient(90deg,#7f8da1,#b3becb)}.roi{color:#283343}.data-table th{background:#f2f5f8;color:#6a778b;font-size:13px}.data-table td{font-size:14px;padding:16px 14px}.account-row{grid-template-columns:minmax(150px,1.5fr) minmax(80px,1fr) 110px 110px 65px;gap:14px}.sub{color:#6c7888}.two-col>*{min-width:0}.note{border-left:2px solid #bbc5d2}.shell footer{font-size:12px;color:#7b8797}
-#import-panel{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;padding:20px 24px;margin:0 0 18px}#import-panel .import-copy{flex:1 1 330px}#import-panel h2{font-size:16px;margin:0 0 5px}#import-panel p{margin:0;font-size:12px;color:#697789}#files{max-width:100%;width:280px;font-size:12px;color:#697789}#files::file-selector-button{background:#fff;border:1px solid #dce3ec;border-radius:6px;padding:9px 12px;color:#303b4a;margin-right:10px;cursor:pointer;font:inherit}#import-status{flex-basis:100%;padding-top:10px;border-top:1px solid #edf0f4}
+#import-panel{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;padding:20px 24px;margin:0 0 18px;border:2px dashed #dce3ec;transition:border-color .2s,background .2s}#import-panel.drag-over{border-color:var(--blue,#3867e8);background:#eef3ff}#import-panel .import-copy{flex:1 1 330px}#import-panel h2{font-size:16px;margin:0 0 5px}#import-panel p{margin:0;font-size:12px;color:#697789}#files{max-width:100%;width:280px;font-size:12px;color:#697789}#files::file-selector-button{background:#fff;border:1px solid #dce3ec;border-radius:6px;padding:9px 12px;color:#303b4a;margin-right:10px;cursor:pointer;font:inherit}#import-status{flex-basis:100%;padding-top:10px;border-top:1px solid #edf0f4}
 @media(min-width:1441px){.header{padding-top:54px}}
 @media(max-width:1440px){.header,.workspace-tabs,.container{margin-left:40px;margin-right:40px}.shell .hero{margin:0}}
 @media(max-width:1000px){.account-row{grid-template-columns:minmax(120px,1fr) 80px 100px 100px 60px;gap:8px}.container{gap:16px}.section{padding:18px}.two-col{grid-template-columns:1fr}.header,.hero{min-height:180px}}
@@ -51,7 +51,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
   <script type="application/json" id="report-data">{"records": [], "warnings": [], "fileCount": 0}</script>
   <main class="shell">
     <header class="hero"><div class="hero-content"><div class="eyebrow">QIANCHUAN · PRODUCT ANALYTICS</div><h1>千川商品分析</h1><p>从投放到成交，看清每一份投入。</p><div class="hero-meta"><span class="tag" id="meta-date"></span><span class="tag" id="meta-files"></span><span class="tag">数据仅保存在本机</span></div></div></header>
-    <div id="import-panel" class="panel"><div class="import-copy"><h2>导入本地文件</h2><p>支持多账户、多日期的乘方商品明细与视频素材 Excel。</p></div><input id="files" type="file" accept=".xlsx" multiple aria-label="选择千川 Excel 文件"><button id="import-button" type="button">开始分析</button><button id="export-button" type="button" disabled>导出报告</button><p id="import-status" role="status" aria-live="polite">选择文件后开始分析，文件仅在浏览器中处理。</p></div>
+    <div id="import-panel" class="panel"><div class="import-copy"><h2>导入本地文件</h2><p>支持多账户、多日期的乘方商品明细与视频素材 Excel，可直接拖拽文件到此处。</p></div><input id="files" type="file" accept=".xlsx" multiple aria-label="选择千川 Excel 文件"><button id="import-button" type="button">开始分析</button><button id="export-button" type="button" disabled>导出报告</button><p id="import-status" role="status" aria-live="polite">选择或拖拽文件后开始分析，文件仅在浏览器中处理。</p></div>
     <section class="toolbar" aria-label="筛选条件"><div class="control"><label for="date-filter">日期</label><select id="date-filter"></select></div><div class="control"><label for="account-filter">账户</label><select id="account-filter"></select></div><div class="control"><label for="search-filter">查找商品或素材</label><input id="search-filter" type="search" placeholder="输入名称或 ID"></div><div class="toolbar-note" id="selection-note"></div></section>
     <nav class="tabs" aria-label="报告页面"><button class="tab" data-page="overview" aria-selected="true">总览</button><button class="tab" data-page="products" aria-selected="false">商品</button><button class="tab" data-page="videos" aria-selected="false">视频素材</button><button class="tab" data-page="quality" aria-selected="false">数据检查</button></nav>
 
@@ -156,6 +156,34 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     $('export-button').disabled = true;
     $('import-status').textContent = `已选择 ${$('files').files.length} 个文件，请点击开始分析。当前下方仍为上次报告。`;
   };
+  // 拖拽上传
+  (() => {
+    const panel = $('import-panel');
+    const fileInput = $('files');
+    ['dragover','dragenter'].forEach(ev => panel.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation();
+      panel.classList.add('drag-over');
+    }));
+    ['dragleave','drop'].forEach(ev => panel.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation();
+      panel.classList.remove('drag-over');
+    }));
+    panel.addEventListener('drop', e => {
+      const dropped = e.dataTransfer.files;
+      if(!dropped || !dropped.length) return;
+      // 只保留 .xlsx 文件
+      const xlsxFiles = [...dropped].filter(f => /\.xlsx?$/i.test(f.name));
+      if(!xlsxFiles.length){
+        $('import-status').textContent='请拖入 .xlsx 文件。';
+        return;
+      }
+      // 用 DataTransfer 把文件塞进 input
+      const dt = new DataTransfer();
+      xlsxFiles.forEach(f => dt.items.add(f));
+      fileInput.files = dt.files;
+      fileInput.onchange();
+    });
+  })();
   $('import-button').onclick = async () => {
     const files = [...$('files').files];
     if (!files.length) { $('import-status').textContent='请先选择 Excel 文件。'; return; }
