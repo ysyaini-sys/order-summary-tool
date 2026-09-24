@@ -595,6 +595,11 @@ async function detectDates(files, platform){
         let fileRows=[];
         for(const sn of wb.SheetNames){
           const rows=sheetToJson(wb.Sheets[sn]);
+          // DEBUG: show column names for kuaishou
+          if(tab==='kuaishou' && rows.length>0){
+            console.log('=== 快手列名 ===', Object.keys(rows[0]));
+            console.log('=== 第1行数据 ===', rows[0]);
+          }
           for(const r of rows){
             const dateCol=Object.keys(r).find(k=>/支付完成时间|订单支付时间|支付时间/i.test(k));
             const idCol=Object.keys(r).find(k=>/商品ID|商品id|商品编码\(平台\)/i.test(k));
