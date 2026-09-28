@@ -33,6 +33,7 @@
           </div>
           <label>开始日期 <input id="date-from" type="date"></label>
           <label>结束日期 <input id="date-to" type="date"></label>
+          <button class="action" id="btn-automa-toufang" type="button">一键下载投放数据</button>
           <button class="action action--primary" id="summarize" type="button">一键汇总</button>
           <button class="action" id="export" type="button" disabled>导出明细</button>
         </div>
@@ -79,6 +80,10 @@
     grid.querySelectorAll('[data-input]').forEach(input => input.addEventListener('change', event => addFiles(event.target.dataset.input, event.target.files)));
     grid.addEventListener('click', event => { const button = event.target.closest('[data-remove]'); if (!button) return; files[button.dataset.remove].splice(Number(button.dataset.index), 1); renderFiles(button.dataset.remove); });
     document.querySelectorAll('[data-scope]').forEach(button => button.addEventListener('click', () => { scope = button.dataset.scope; document.querySelectorAll('[data-scope]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); }));
+    document.getElementById('btn-automa-toufang').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('automa:execute-workflow', { detail: { publicId: 'toufang' } }));
+      showStatus('ok', '已触发一键下载，请等待 Automa 完成投放数据下载。');
+    });
 
     async function rowsFromFile(file) {
       const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
