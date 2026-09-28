@@ -34,6 +34,8 @@ tr:nth-child(even) td { background:#fafbfc; }
 td.sel { background:#b3d9ff !important; outline:2px solid #4472C4; }
 .table-wrap { user-select:none; -webkit-user-select:none; }
 .table-wrap td[contenteditable]:focus { user-select:text; -webkit-user-select:text; }
+#toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.75); color:#fff; padding:10px 22px; border-radius:8px; font-size:13px; z-index:9999; opacity:0; transition:opacity .3s; pointer-events:none; }
+#toast.show { opacity:1; }
 </style>
 </head>
 <body>
@@ -48,6 +50,14 @@ td.sel { background:#b3d9ff !important; outline:2px solid #4472C4; }
 <div class="table-wrap">
   <table id="tbl"></table>
 </div>
+<div id="toast"></div>
+<script>
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){ t.classList.remove('show'); },1800);
+}
 <p class="hint">点击单元格直接编辑 · 鼠标拖选区域后 Ctrl+C 复制 · 表头排序 · 子表间切换顶部标签</p>
 <script>
 var sheets = [];
@@ -294,7 +304,7 @@ function copyAll() {
   var rows = sheets[activeSheet].rows;
   var text = rows.map(function(r) { return r.join('\t'); }).join('\n');
   navigator.clipboard.writeText(text).then(function() {
-    alert('已复制当前子表「' + sheets[activeSheet].name + '」到剪贴板，可直接粘贴到Excel');
+    showToast('已复制「' + sheets[activeSheet].name + '」');
   }).catch(function() {
     var ta = document.createElement('textarea');
     ta.value = text;
@@ -302,7 +312,7 @@ function copyAll() {
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    alert('已复制当前子表');
+    showToast('已复制');
   });
 }
 
@@ -404,7 +414,7 @@ function bindSelection() {
 }
 
 function copySelection() {
-  if (selR1 < 0) { alert('请先拖选区域'); return; }
+  if (selR1 < 0) { showToast('请先拖选区域'); return; }
   syncActiveCell();
   var rows = sheets[activeSheet].rows;
   var rMin = Math.min(selR1, selR2), rMax = Math.max(selR1, selR2);
@@ -425,7 +435,7 @@ function copySelection() {
   }
   var text = lines.join('\n');
   navigator.clipboard.writeText(text).then(function() {
-    alert('已复制选区 ' + (rMax-rMin+1) + ' 行 × ' + (cMax-cMin+1) + ' 列，可直接粘贴到Excel');
+    showToast('已复制 ' + (rMax-rMin+1) + '行×' + (cMax-cMin+1) + '列');
   }).catch(function() {
     var ta = document.createElement('textarea');
     ta.value = text;
@@ -433,7 +443,7 @@ function copySelection() {
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    alert('已复制选区');
+    showToast('已复制选区');
   });
 }
 
