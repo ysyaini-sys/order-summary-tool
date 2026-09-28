@@ -36,6 +36,9 @@ test('ad summary is an independent local-file workspace', () => {
   assert.match(page, /id="date-to"/);
   assert.match(page, /id="summarize"/);
   assert.match(page, /id="export"/);
+  assert.match(page, /id="btn-automa-toufang"/);
+  assert.match(page, /automa:execute-workflow/);
+  assert.match(page, /publicId:\s*'toufang'/);
   assert.match(page, /浏览器本地处理/);
   assert.doesNotMatch(page, /id="ks-password"/);
   assert.doesNotMatch(page, /id="upload-douyin"/);
