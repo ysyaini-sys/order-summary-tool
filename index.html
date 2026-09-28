@@ -917,7 +917,9 @@ function buildSPHSummarySheet(perFileResults){
       if(boxVal) totalBox+=parseFloat(boxVal);
       // 商品明细行：有商品ID的行
       if(r.id){
-        productRows.push({store:store, id:r.id, name:r.name||'', box:parseFloat(boxVal)||0, amount:parseFloat(r.totalAmount)||0});
+        // 特殊ID(10000908591826)每行显示各自规格成交额，其他商品显示合并总额
+        var isSp = SPECIAL_IDS.indexOf(r.id) !== -1;
+        productRows.push({store:store, id:r.id, name:r.name||'', box:parseFloat(boxVal)||0, amount:parseFloat(isSp ? r.amount : r.totalAmount)||0});
       }
     });
     rows.push([store, ids.size, specs, totalQty, totalBox]);
