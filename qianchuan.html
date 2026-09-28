@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>千川商品投放分析</title>
+  <link rel="stylesheet" href="workspace.css">
   <style>
     :root{--ink:#162237;--muted:#65728a;--line:#e5eaf2;--blue:#3867e8;--cyan:#21b8c2;--bg:#f6f8fc;--white:#fff;--shadow:0 12px 36px rgba(22,39,72,.07)}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;font-size:14px}button,input,select{font:inherit}button{cursor:pointer}
@@ -46,11 +47,19 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
 
 </style>
 </head>
-<body>
-<nav class="workspace-nav" aria-label="主导航"><a class="brand" href="index.html">数据工作台</a><a href="index.html">订单汇总</a><a href="qianchuan.html" aria-current="page">千川分析</a><span class="nav-note">本地文件 · 浏览器内处理</span></nav>
-  <script type="application/json" id="report-data">{"records": [], "warnings": [], "fileCount": 0}</script>
-  <main class="shell">
-    <header class="hero"><div class="hero-content"><div class="eyebrow">QIANCHUAN · PRODUCT ANALYTICS</div><h1>千川商品分析</h1><p>从投放到成交，看清每一份投入。</p><div class="hero-meta"><span class="tag" id="meta-date"></span><span class="tag" id="meta-files"></span><span class="tag">数据仅保存在本机</span></div></div></header>
+<body class="workspace-page">
+  <div class="workspace-shell">
+    <aside class="workspace-sidebar" aria-label="工作区导航">
+      <span class="workspace-sidebar__label">工作区</span>
+      <nav aria-label="业务导航">
+        <a href="index.html">订单汇总</a>
+        <a href="toufang.html">投放数据汇总</a>
+        <a href="qianchuan.html" aria-current="page">千川商品分析</a>
+      </nav>
+    </aside>
+    <main class="workspace-main">
+      <script type="application/json" id="report-data">{"records": [], "warnings": [], "fileCount": 0}</script>
+      <header class="workspace-page-heading"><h1>千川商品分析</h1><p><span id="meta-date">选择本地文件后开始分析。</span><span id="meta-files" hidden></span></p></header>
     <div id="import-panel" class="panel"><div class="import-copy"><h2>导入本地文件</h2><p>支持多账户、多日期的乘方商品明细与视频素材 Excel，可直接拖拽文件到此处。</p></div><input id="files" type="file" accept=".xlsx" multiple aria-label="选择千川 Excel 文件"><button id="import-button" type="button">开始分析</button><button id="export-button" type="button" disabled>导出报告</button><p id="import-status" role="status" aria-live="polite">选择或拖拽文件后开始分析，文件仅在浏览器中处理。</p></div>
     <section class="toolbar" aria-label="筛选条件"><div class="control"><label for="date-filter">日期</label><select id="date-filter"></select></div><div class="control"><label for="account-filter">账户</label><select id="account-filter"></select></div><div class="control"><label for="search-filter">查找商品或素材</label><input id="search-filter" type="search" placeholder="输入名称或 ID"></div><div class="toolbar-note" id="selection-note"></div></section>
     <nav class="tabs" aria-label="报告页面"><button class="tab" data-page="overview" aria-selected="true">总览</button><button class="tab" data-page="products" aria-selected="false">商品</button><button class="tab" data-page="videos" aria-selected="false">视频素材</button><button class="tab" data-page="quality" aria-selected="false">数据检查</button></nav>
@@ -64,7 +73,8 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     <section id="videos" class="page"><div class="panel"><div class="panel-head"><h2>视频素材明细</h2><span class="sub" id="video-count"></span></div><div class="tablewrap" id="video-table"></div></div></section>
     <section id="quality" class="page"><div class="panel"><div class="panel-head"><h2>数据检查</h2><span class="sub">生成时间 <span id="generated-at"></span></span></div><div class="stats"><div class="stat"><strong id="stat-files"></strong><span>读取文件</span></div><div class="stat"><strong id="stat-products"></strong><span>商品日期行</span></div><div class="stat"><strong id="stat-videos"></strong><span>视频日期行</span></div><div class="stat"><strong id="stat-all"></strong><span>排除的“全部”行</span></div></div><p>无效或金额缺失的商品行：<span id="stat-ignored"></span></p><div style="margin-top:20px" class="note">按列名识别指标。相同账户、日期和商品或素材 ID 的重复记录，只保留较新文件。商品与视频素材属于不同统计维度，整体消耗和成交金额分别汇总。无整体消耗时，ROI 显示为“—”。</div><h3 style="margin-top:25px;font-size:14px">处理提示</h3><div id="warnings"></div><p class="muted" style="font-size:12px;margin-top:20px">源文件夹：<span id="input-folder"></span></p></div></section>
     <footer>千川商品投放分析 · 固定规则本地生成 · 无 AI 调用</footer>
-  </main>
+    </main>
+  </div>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" data-import-script></script>
   <script src="qianchuan.js" data-import-script></script>
   <script>
@@ -214,7 +224,9 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     if (!current || !current.records.length) return;
     const doc = document.documentElement.cloneNode(true);
     doc.querySelector('#import-panel').remove();
-    doc.querySelector('.workspace-nav')?.remove();
+    doc.querySelector('.workspace-sidebar')?.remove();
+    doc.querySelector('.workspace-shell')?.classList.remove('workspace-shell');
+    doc.querySelector('.workspace-main')?.classList.remove('workspace-main');
     doc.querySelectorAll('[data-import-script]').forEach(el=>el.remove());
     doc.querySelector('#report-data').textContent=JSON.stringify(current).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
     const url=URL.createObjectURL(new Blob(['<!doctype html>\n'+doc.outerHTML],{type:'text/html;charset=utf-8'}));
