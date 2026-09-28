@@ -13,3 +13,16 @@ test('shared workspace stylesheet defines a left sidebar and mobile fallback', (
   assert.match(stylesheet, /\.workspace-main/);
   assert.match(stylesheet, /@media\s*\(max-width:\s*760px\)/);
 });
+
+test('order workspace contains only the three order platforms', () => {
+  const page = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+  assert.match(page, /href="workspace\.css"/);
+  assert.match(page, /class="workspace-sidebar"/);
+  assert.match(page, /id="upload-douyin"/);
+  assert.match(page, /id="upload-shipinhao"/);
+  assert.match(page, /id="upload-kuaishou"/);
+  assert.match(page, /id="ks-password"/);
+  assert.doesNotMatch(page, /id="upload-summary"/);
+  assert.doesNotMatch(page, /id="btn-automa-toufang"/);
+});
