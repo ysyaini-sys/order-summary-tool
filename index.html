@@ -620,6 +620,13 @@ async function detectDates(files, platform){
             if(tab!=='shipinhao' && specCol==='商品属性') rawSpec=extractSpec(rawSpec);
             const prodName=nameCol?String(r[nameCol]).trim():'';
             let rowAmount=price*qty;
+            // 快手：按实付款列计算成交额
+            if(tab==='kuaishou'){
+              const payCol=Object.keys(r).find(k=>/实付|实际付款|订单金额|支付金额/i.test(k));
+              if(payCol){
+                rowAmount=parseFloat(String(r[payCol]).replace(/[¥￥,，\s]/g,''))||0;
+              }
+            }
             // 视频号泉阳泉(10000908591826)：固定单价计算成交额
             const rid=String(r[idCol]).trim();
             if(tab==='shipinhao' && rid==='10000908591826'){
