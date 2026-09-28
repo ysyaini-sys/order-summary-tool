@@ -83,36 +83,14 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
 @media(max-width:760px){.workspace-nav{padding:0 20px;gap:20px;flex-wrap:wrap}.workspace-nav .nav-note{display:none}.header,.workspace-tabs,.container{margin-left:20px;margin-right:20px}.header,.hero{padding:32px 0 24px;min-height:160px}.header p,.hero p{font-size:13px}.container{grid-template-columns:1fr;grid-template-rows:auto}.shell{padding:0 20px 40px}.shell .hero{margin:0}.kpis{grid-template-columns:1fr}.card{min-height:120px}.card strong{font-size:32px}.panel{padding:18px}.toolbar{gap:12px;padding:14px}.control,.control input,.control select{width:100%;min-width:0}.tabs{gap:18px;overflow-x:auto;white-space:nowrap}.tab{padding:12px 0}.account-row{grid-template-columns:1fr 1fr 1fr;gap:8px}.account-name,.bartrack{grid-column:1/-1}.account-head{display:none}.account-row .num{text-align:left}.account-row:not(.account-head) .num:nth-last-child(3):before{content:'成本 ';color:#748090;font-size:11px}.account-row:not(.account-head) .num:nth-last-child(2):before{content:'成交 ';color:#748090;font-size:11px}.account-row .roi:before{content:'ROI ';font-size:11px}#import-panel{padding:18px}#import-panel .import-copy{flex-basis:100%}.workspace-tabs{gap:24px}.stats{grid-template-columns:repeat(2,1fr)}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
+ .container{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto} @media(max-width:900px){.container{grid-template-columns:1fr}.container{grid-template-rows:auto}}
 </style>
 </head>
 <body>
-<nav class="workspace-nav" aria-label="主导航"><a class="brand" href="index.html">数据工作台</a><a href="index.html" aria-current="page">订单汇总</a><a href="qianchuan.html" target="_blank" rel="noopener noreferrer">千川分析 ↗</a><span class="nav-note">本地文件 · 浏览器内处理</span></nav>
+<nav class="workspace-nav" aria-label="主导航"><a class="brand" href="index.html">数据工作台</a><a href="index.html" aria-current="page">订单汇总</a><a href="toufang.html">投放数据汇总</a><a href="qianchuan.html" target="_blank" rel="noopener noreferrer">千川分析 ↗</a><span class="nav-note">本地文件 · 浏览器内处理</span></nav>
 <header class="header"><h1>电商数据工作台</h1><p>从订单到投放，让数据清晰有序。</p></header>
-<nav class="workspace-tabs" aria-label="工作区"><a href="index.html" aria-current="page">订单汇总</a><a href="qianchuan.html" target="_blank" rel="noopener noreferrer">千川商品分析 ↗</a></nav>
+<nav class="workspace-tabs" aria-label="工作区"><a href="index.html" aria-current="page">订单汇总</a><a href="toufang.html">投放数据汇总 ↗</a><a href="qianchuan.html" target="_blank" rel="noopener noreferrer">千川商品分析 ↗</a></nav>
 <div class="container">
-  <div class="section">
-    <div class="section-head">
-      <span class="icon">📊</span>
-      <h2>投放数据汇总</h2>
-      <span class="sub">多文件合并</span>
-    </div>
-    <div class="upload-zone" id="upload-summary">
-      <div class="icon">📤</div>
-      <p>点击或拖拽上传 .xlsx 文件</p>
-    </div>
-    <div class="file-list" id="file-list-summary"></div>
-    <div class="controls">
-      <button class="btn btn-automa" id="btn-automa-toufang">🚀 一键下载</button>
-      <button class="btn" id="btn-process-summary">开始汇总</button>
-      <button class="btn btn-secondary" id="btn-download-summary" style="display:none;">下载</button>
-      <button class="btn btn-sheet" id="btn-sheet-summary" style="display:none;">📊 在线表格</button>
-    </div>
-    <div id="msg-summary"></div>
-    <div class="result-box" id="result-summary">
-      <div class="stats" id="stats-summary"></div>
-      <div class="table-wrap"><table id="table-summary"></table></div>
-    </div>
-  </div>
   <div class="section">
     <div class="section-head">
       <span class="icon">🛒</span>
@@ -447,78 +425,7 @@ function readFile(file, platform){
 }
 function sheetToJson(ws){ return Array.isArray(ws) ? ws : XLSX.utils.sheet_to_json(ws,{defval:''}); }
 function showResult(tab, show){ document.getElementById('result-'+tab).classList.toggle('show', show); }
-const uploads = { summary: setupUpload('summary') };
-
-document.getElementById('btn-process-summary').addEventListener('click', async ()=>{
-  const files = uploads.summary.getFiles();
-  if(files.length===0){ showMsg('summary','err','请先上传文件'); return; }
-  showMsg('summary','warn','正在处理...');
-  try {
-    let allRows=[], fileCount=files.length;
-    for(const f of files){
-      const wb = await readFile(f);
-      for(const sn of wb.SheetNames){
-        const rows = sheetToJson(wb.Sheets[sn]);
-        for(const r of rows){
-          const dateCol = Object.keys(r).find(k=>/日期|时间/i.test(k));
-          if(!dateCol) continue;
-          const dv = String(r[dateCol]).trim();
-          if(dv==='全部'||dv==='') continue;
-          const idCol = Object.keys(r).find(k=>/商品ID|商品id/i.test(k));
-          const nameCol = Object.keys(r).find(k=>/商品名称|商品名/i.test(k));
-          const costCol = Object.keys(r).find(k=>/整体消耗|消耗/i.test(k));
-          if(!idCol||!costCol) continue;
-          allRows.push({id:String(r[idCol]).trim(), name:nameCol?String(r[nameCol]).trim():'', date:dv, cost:parseFloat(String(r[costCol]).replace(/,/g,''))||0, source:f.name});
-        }
-      }
-    }
-    if(allRows.length===0){ showMsg('summary','err','未解析到有效数据'); return; }
-    const seen=new Set(), dupes=[];
-    for(const r of allRows){ const k=r.source+'|'+r.id; if(seen.has(k)) dupes.push(r); seen.add(k); }
-    if(dupes.length>0){ showMsg('summary','err','发现 '+dupes.length+' 条重复数据，已停止处理。'); return; }
-    const groups={};
-    for(const r of allRows){ if(!groups[r.id]) groups[r.id]={id:r.id,name:r.name,total:0,dates:[]}; groups[r.id].total+=r.cost; groups[r.id].dates.push(r); }
-    let result = Object.values(groups).map(g=>({...g, pkg:CANNED_IDS.includes(g.id)?'罐装':'瓶装'}));
-    result.sort((a,b)=>{ if(a.pkg!==b.pkg) return a.pkg==='罐装'?-1:1; if(a.id!==b.id) return a.id<b.id?-1:1; return 0; });
-    let flatRows=[];
-    let cannedWritten=false, bottledWritten=false;
-    for(const g of result){
-      const dates = g.dates.sort((a,b)=>a.date.localeCompare(b.date));
-      dates.forEach((d,i)=>{
-        let pkgVal='';
-        if(i===0){
-          if(g.pkg==='罐装' && !cannedWritten){ pkgVal='罐装'; cannedWritten=true; }
-          else if(g.pkg==='瓶装' && !bottledWritten){ pkgVal='瓶装'; bottledWritten=true; }
-        }
-        flatRows.push({pkg:pkgVal, id:i===0?g.id:'', name:i===0?g.name:'', date:d.date, cost:d.cost.toFixed(2), total:i===0?g.total.toFixed(2):''});
-      });
-    }
-    showResult('summary', true);
-    document.getElementById('stats-summary').innerHTML='<div class="stat"><div class="label">文件</div><div class="value">'+fileCount+'</div></div><div class="stat"><div class="label">记录</div><div class="value">'+allRows.length+'</div></div><div class="stat"><div class="label">总消耗</div><div class="value">¥'+allRows.reduce((s,r)=>s+r.cost,0).toFixed(2)+'</div></div>';
-    const tbl=document.getElementById('table-summary');
-    tbl.innerHTML='<thead><tr><th>包装</th><th>商品ID</th><th>商品名称</th><th>日期</th><th>整体消耗</th><th>总消耗</th></tr></thead>';
-    const tb=document.createElement('tbody');
-    flatRows.forEach(r=>{ tb.innerHTML+='<tr><td>'+r.pkg+'</td><td style="font-family:Consolas">'+r.id+'</td><td>'+r.name+'</td><td>'+r.date+'</td><td class="num">'+r.cost+'</td><td class="num">'+r.total+'</td></tr>'; });
-    tbl.appendChild(tb);
-    window._summaryData=flatRows;
-    document.getElementById('btn-download-summary').style.display='inline-block';
-    document.getElementById('btn-sheet-summary').style.display='inline-block';
-    showMsg('summary','ok','完成：'+allRows.length+' 条记录，'+Object.keys(groups).length+' 个商品');
-  } catch(err){ showMsg('summary','err','处理失败：'+err.message); }
-});
-document.getElementById('btn-sheet-summary').addEventListener('click', ()=>{
-  if(!window._summaryData) return;
-  const rows = [['包装','商品ID','商品名称','日期','整体消耗','总消耗']];
-  window._summaryData.forEach(r=>{ rows.push([r.pkg, String(r.id), r.name, r.date, parseFloat(r.cost), r.total?parseFloat(r.total):'']); });
-  openSpreadsheet('投放数据汇总', [{name: '汇总', rows: rows}]);
-});
-document.getElementById('btn-download-summary').addEventListener('click',()=>{
-  if(!window._summaryData) return;
-  const ws=XLSX.utils.json_to_sheet(window._summaryData);
-  ws['!cols']=[{wch:8},{wch:24},{wch:55},{wch:12},{wch:14},{wch:14}];
-  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'汇总');
-  XLSX.writeFile(wb,'数据汇总_'+new Date().toISOString().slice(0,10)+'.xlsx');
-});
+const uploads = {};
 
 function getMultiplier(spec){
   if(/30[瓶罐]/.test(spec)) return 5;
