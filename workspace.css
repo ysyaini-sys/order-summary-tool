@@ -1,0 +1,32 @@
+:root {
+  --workspace-canvas: #f5f5f7;
+  --workspace-surface: #ffffff;
+  --workspace-ink: #1d1d1f;
+  --workspace-muted: #6e6e73;
+  --workspace-line: #e5e5ea;
+  --workspace-blue: #0071e3;
+  --workspace-sidebar-width: 216px;
+}
+body.workspace-page { min-height: 100vh; margin: 0; background: var(--workspace-canvas); color: var(--workspace-ink); font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+.workspace-shell { min-height: 100vh; display: grid; grid-template-columns: var(--workspace-sidebar-width) minmax(0, 1fr); }
+.workspace-sidebar { position: sticky; top: 0; height: 100vh; padding: 28px 14px; background: rgba(255, 255, 255, .92); border-right: 1px solid var(--workspace-line); }
+.workspace-sidebar__label { display: block; margin: 0 10px 24px; color: #8e8e93; font-size: 12px; font-weight: 600; letter-spacing: .08em; }
+.workspace-sidebar nav { display: grid; gap: 4px; }
+.workspace-sidebar a { display: block; border-radius: 9px; padding: 10px 12px; color: var(--workspace-muted); font-size: 14px; text-decoration: none; }
+.workspace-sidebar a:hover { background: #f0f0f2; color: var(--workspace-ink); }
+.workspace-sidebar a[aria-current="page"] { background: #e8f2ff; color: #006edc; font-weight: 600; }
+.workspace-main { width: min(1320px, calc(100vw - var(--workspace-sidebar-width))); margin: 0 auto; padding: 42px 44px 72px; }
+.workspace-page-heading { margin: 0 0 28px; }
+.workspace-page-heading h1 { margin: 0; font-size: 30px; letter-spacing: -.04em; }
+.workspace-page-heading p { margin: 8px 0 0; color: var(--workspace-muted); font-size: 14px; }
+.workspace-card { border: 1px solid var(--workspace-line); border-radius: 16px; background: var(--workspace-surface); box-shadow: 0 6px 20px rgba(0, 0, 0, .035); }
+.workspace-page button:focus-visible, .workspace-page input:focus-visible, .workspace-page select:focus-visible, .workspace-page a:focus-visible { outline: 3px solid rgba(0, 113, 227, .35); outline-offset: 2px; }
+@media (max-width: 760px) {
+  .workspace-shell { display: block; }
+  .workspace-sidebar { position: static; width: auto; height: auto; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--workspace-line); }
+  .workspace-sidebar__label { display: none; }
+  .workspace-sidebar nav { display: flex; gap: 4px; overflow-x: auto; }
+  .workspace-sidebar a { flex: 0 0 auto; padding: 8px 10px; }
+  .workspace-main { width: auto; padding: 28px 16px 44px; }
+  .workspace-page-heading h1 { font-size: 26px; }
+}
