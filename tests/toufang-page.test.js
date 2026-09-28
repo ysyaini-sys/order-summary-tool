@@ -1,2 +1,2 @@
-const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const html=fs.readFileSync('/tmp/toufang.html','utf8');
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const html=fs.readFileSync(require('node:path').join(__dirname,'..','toufang.html'),'utf8');
 test('投放汇总是独立页面',()=>{assert.match(html,/投放数据与订单数据使用不同计算逻辑/);assert.match(html,/id="summarize"/);assert.match(html,/全部投放平台/);assert.match(html,/抖音投放数据/);assert.match(html,/视频号投放数据/);assert.match(html,/快手投放数据/);assert.match(html,/ROI/);assert.doesNotMatch(html,/btn-process-summary/);});
