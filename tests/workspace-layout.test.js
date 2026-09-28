@@ -40,3 +40,14 @@ test('ad summary is an independent local-file workspace', () => {
   assert.doesNotMatch(page, /id="ks-password"/);
   assert.doesNotMatch(page, /id="upload-douyin"/);
 });
+
+test('qianchuan keeps its analyzer while using the independent workspace shell', () => {
+  const page = fs.readFileSync(path.join(root, 'qianchuan.html'), 'utf8');
+
+  assert.match(page, /href="workspace\.css"/);
+  assert.match(page, /class="workspace-sidebar"/);
+  assert.match(page, /src="qianchuan\.js"/);
+  assert.match(page, /id="files"/);
+  assert.doesNotMatch(page, /<nav class="workspace-nav"/);
+  assert.doesNotMatch(page, /<header class="hero"/);
+});
