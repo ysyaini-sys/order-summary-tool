@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>电商订单汇总工具</title>
+<meta name="workstation-version" content="2026.09.28">
+<meta name="workstation-updated" content="2026-09-28">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.min.js"></script>
 <style>
@@ -84,6 +86,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
 </style>
+<style id="workstation-foundation-ui">.workstation-meta{color:#697789;font-size:11px;letter-spacing:.01em}.automa-status{color:#697789;font-size:12px;min-height:1.4em;display:inline-flex;align-items:center}.automa-status[data-state="ok"]{color:#16733d}.automa-status[data-state="error"]{color:#b42318}</style>
 </head>
 <body>
 <nav class="workspace-nav" aria-label="主导航"><a class="brand" href="index.html">数据工作台</a><a href="index.html" aria-current="page">订单汇总</a><a href="qianchuan.html" target="_blank" rel="noopener noreferrer">千川分析 ↗</a><span class="nav-note">本地文件 · 浏览器内处理</span></nav>
@@ -103,6 +106,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     <div class="file-list" id="file-list-summary"></div>
     <div class="controls">
       <button class="btn btn-automa" id="btn-automa-toufang">🚀 一键下载</button>
+      <span id="automa-status" class="automa-status" role="status" aria-live="polite">本机工作流就绪</span>
       <button class="btn" id="btn-process-summary">开始汇总</button>
       <button class="btn btn-secondary" id="btn-download-summary" style="display:none;">下载</button>
       <button class="btn btn-sheet" id="btn-sheet-summary" style="display:none;">📊 在线表格</button>
@@ -944,12 +948,16 @@ function buildSPHSummarySheet(perFileResults){
 
 // ===== Automa 一键下载 =====
 document.getElementById('btn-automa-toufang').addEventListener('click', ()=>{
+  const status = document.getElementById('automa-status');
+  if (status) { status.dataset.state = 'pending'; status.textContent = '正在调用本机下载工作流…'; }
   try {
     window.dispatchEvent(new CustomEvent('automa:execute-workflow', {
       detail: { publicId: 'toufang' }
     }));
-    showMsg('summary', 'ok', '已触发 Automa 工作流，请等待自动下载完成...');
+    if (status) { status.dataset.state = 'ok'; status.textContent = '已发送给 Automa，请等待下载'; }
+    showMsg('summary', 'ok', '已发送给本机 Automa 工作流，请等待自动下载完成。');
   } catch(e) {
+    if (status) { status.dataset.state = 'error'; status.textContent = '未能触发，请确认 Automa 中只有一个 toufang 工作流'; }
     showMsg('summary', 'err', '触发失败，请确认 Automa 扩展已安装并开启');
   }
 });
