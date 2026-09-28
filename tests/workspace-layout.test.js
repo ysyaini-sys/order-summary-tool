@@ -26,3 +26,17 @@ test('order workspace contains only the three order platforms', () => {
   assert.doesNotMatch(page, /id="upload-summary"/);
   assert.doesNotMatch(page, /id="btn-automa-toufang"/);
 });
+
+test('ad summary is an independent local-file workspace', () => {
+  const page = fs.readFileSync(path.join(root, 'toufang.html'), 'utf8');
+
+  assert.match(page, /href="workspace\.css"/);
+  assert.match(page, /class="workspace-sidebar"/);
+  assert.match(page, /id="date-from"/);
+  assert.match(page, /id="date-to"/);
+  assert.match(page, /id="summarize"/);
+  assert.match(page, /id="export"/);
+  assert.match(page, /浏览器本地处理/);
+  assert.doesNotMatch(page, /id="ks-password"/);
+  assert.doesNotMatch(page, /id="upload-douyin"/);
+});
