@@ -640,7 +640,8 @@ async function detectDates(files, platform){
       window['_'+tab+'Date']=targetDate;
       document.getElementById('btn-download-'+tab).style.display='inline-block';
       document.getElementById('btn-sheet-'+tab).style.display='inline-block';
-      showMsg(tab,'ok','完成：'+perFileResults.length+' 个文件，¥'+grandAmount.toFixed(2));
+      var fileDetail = perFileResults.map(function(pf){return pf.name+'('+pf.rows+'行)';}).join(', ');
+      showMsg(tab,'ok','完成：'+perFileResults.length+' 个文件，¥'+grandAmount.toFixed(2)+'<br>📁 '+fileDetail);
     } catch(err){ showMsg(tab,'err','处理失败：'+err.message); }
   });
   document.getElementById('btn-sheet-'+tab).addEventListener('click', ()=>{
