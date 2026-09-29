@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="workspace.css">
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
-    .toufang-panel{padding:22px;margin-bottom:18px}.toufang-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.toufang-controls label{font-size:13px;color:var(--workspace-muted)}.toufang-controls input{border:1px solid var(--workspace-line);border-radius:8px;padding:8px;background:#fff}.scope{display:flex;gap:8px;flex-wrap:wrap}.scope button,.action{border:1px solid var(--workspace-line);border-radius:8px;padding:9px 13px;background:#fff;color:var(--workspace-ink);cursor:pointer}.scope button[aria-pressed="true"],.action--primary{border-color:var(--workspace-blue);background:var(--workspace-blue);color:#fff}.action:disabled{opacity:.5;cursor:not-allowed}.toufang-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.upload-card{padding:18px}.upload-card h2{margin:0;font-size:16px}.upload-card p{margin:7px 0 14px;color:var(--workspace-muted);font-size:13px}.upload-card input{display:none}.upload-card label{display:block;border:1px dashed #c7c7cc;border-radius:10px;padding:22px 12px;text-align:center;color:#4f5965;cursor:pointer}.upload-card label:hover{border-color:var(--workspace-blue);background:#f4f8ff}.file-list{display:grid;gap:6px;margin-top:12px}.file-item{display:flex;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:7px;background:#f5f5f7;font-size:12px}.file-item button{border:0;background:none;color:#c5221f;cursor:pointer}.status{display:none;margin-top:14px;padding:10px 12px;border-radius:9px;font-size:13px}.status.show{display:block}.status.ok{background:#eaf7ef;color:#16733d}.status.warn{background:#fff7e8;color:#8a5a00}.status.err{background:#fff0f0;color:#b42318}.result-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.result-head h2{margin:0;font-size:17px}.result-head span{font-size:12px;color:var(--workspace-muted)}.table-wrap{overflow:auto}.result-table{width:100%;border-collapse:collapse;font-size:13px}.result-table th{padding:11px;text-align:left;background:#f5f5f7;color:var(--workspace-muted);font-weight:600}.result-table td{padding:11px;border-bottom:1px solid var(--workspace-line)}.result-table td.num{text-align:right;font-variant-numeric:tabular-nums}.empty{padding:34px;text-align:center;color:var(--workspace-muted);border:1px dashed var(--workspace-line);border-radius:10px}@media(max-width:760px){.toufang-grid{grid-template-columns:1fr}.toufang-panel{padding:16px}.toufang-controls{align-items:flex-start}.toufang-controls label{width:100%}}
+    .toufang-panel{padding:22px;margin-bottom:18px}.toufang-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.toufang-controls label{font-size:13px;color:var(--workspace-muted)}.toufang-controls input{border:1px solid var(--workspace-line);border-radius:8px;padding:8px;background:#fff}.scope{display:flex;gap:8px;flex-wrap:wrap}.scope button,.action{border:1px solid var(--workspace-line);border-radius:8px;padding:9px 13px;background:#fff;color:var(--workspace-ink);cursor:pointer}.scope button[aria-pressed="true"],.action--primary{border-color:var(--workspace-blue);background:var(--workspace-blue);color:#fff}.action:disabled{opacity:.5;cursor:not-allowed}.toufang-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.upload-card{padding:18px;cursor:pointer;transition:border-color .15s,background-color .15s,box-shadow .15s}.upload-card:focus-visible{outline:3px solid rgba(0,113,227,.35);outline-offset:2px}.upload-card h2{margin:0;font-size:16px}.upload-card p{margin:7px 0 14px;color:var(--workspace-muted);font-size:13px}.upload-card input{display:none}.upload-card label{display:block;border:2px dashed #c7c7cc;border-radius:10px;padding:30px 12px;text-align:center;color:#4f5965;cursor:pointer;transition:.15s}.upload-card label:hover,.upload-card.dragover{border-color:var(--workspace-blue);background:#f4f8ff;box-shadow:0 0 0 3px rgba(0,113,227,.08)}.upload-card.dragover label{border-color:var(--workspace-blue);background:transparent}.upload-card label::before{content:'📥';display:block;font-size:24px;margin-bottom:7px}.file-list{display:grid;gap:6px;margin-top:12px}.file-item{display:flex;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:7px;background:#f5f5f7;font-size:12px}.file-item button{border:0;background:none;color:#c5221f;cursor:pointer}.status{display:none;margin-top:14px;padding:10px 12px;border-radius:9px;font-size:13px}.status.show{display:block}.status.ok{background:#eaf7ef;color:#16733d}.status.warn{background:#fff7e8;color:#8a5a00}.status.err{background:#fff0f0;color:#b42318}.result-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.result-head h2{margin:0;font-size:17px}.result-head span{font-size:12px;color:var(--workspace-muted)}.result-wrap{display:flex;align-items:center;justify-content:space-between;gap:16px}.result-wrap .result-head{flex:1}.result-wrap .action[hidden]{display:none}.table-wrap{overflow:auto}.result-table{width:100%;border-collapse:collapse;font-size:13px}.result-table th{padding:11px;text-align:left;background:#f5f5f7;color:var(--workspace-muted);font-weight:600}.result-table td{padding:11px;border-bottom:1px solid var(--workspace-line)}.result-table td.num{text-align:right;font-variant-numeric:tabular-nums}.empty{padding:34px;text-align:center;color:var(--workspace-muted);border:1px dashed var(--workspace-line);border-radius:10px}@media(max-width:760px){.toufang-grid{grid-template-columns:1fr}.toufang-panel{padding:16px}.toufang-controls{align-items:flex-start}.toufang-controls label{width:100%}}
   </style>
 </head>
 <body class="workspace-page">
@@ -41,7 +41,7 @@
       </section>
       <section class="toufang-grid" id="upload-grid" aria-label="投放报表上传"></section>
       <section class="workspace-card toufang-panel">
-        <div class="result-head"><h2>投放汇总结果</h2><span>消耗、成交金额、订单数、ROI、转化成本</span></div>
+        <div class="result-wrap"><div class="result-head"><h2>投放汇总结果</h2><span>消耗、成交金额、订单数、ROI、转化成本</span></div><button class="action" id="open-sheet" type="button" disabled>📊 在线表格</button></div>
         <div id="result"><div class="empty">上传本地投放报表后，点击“一键汇总”。</div></div>
       </section>
     </main>
@@ -71,14 +71,39 @@
       node.innerHTML = files[key].map((file, index) => `<div class="file-item"><span>${escapeHtml(file.name)}</span><button type="button" data-remove="${key}" data-index="${index}">移除</button></div>`).join('');
     }
     function addFiles(key, list) {
-      for (const file of list) {
+      const selectedFiles = Array.from(list);
+      const acceptedFiles = selectedFiles.filter(file => /\.(xlsx|xls|csv)$/i.test(file.name));
+      if (acceptedFiles.length !== selectedFiles.length) showStatus('err', '只支持 .xlsx、.xls 或 .csv 文件，其他文件已忽略。');
+      for (const file of acceptedFiles) {
         if (!files[key].some(item => item.name === file.name && item.size === file.size)) files[key].push(file);
       }
+      if (acceptedFiles.length) document.getElementById('open-sheet').disabled = true;
       renderFiles(key);
     }
-    grid.innerHTML = platforms.map(platform => `<article class="workspace-card upload-card"><h2>${platform.label}</h2><p>${platform.tip}</p><label for="ad-file-${platform.key}">选择或拖入本地文件<input id="ad-file-${platform.key}" data-input="${platform.key}" type="file" accept=".xlsx,.xls,.csv" multiple></label><div class="file-list" data-files="${platform.key}"></div></article>`).join('');
-    grid.querySelectorAll('[data-input]').forEach(input => input.addEventListener('change', event => addFiles(event.target.dataset.input, event.target.files)));
-    grid.addEventListener('click', event => { const button = event.target.closest('[data-remove]'); if (!button) return; files[button.dataset.remove].splice(Number(button.dataset.index), 1); renderFiles(button.dataset.remove); });
+    grid.innerHTML = platforms.map(platform => `<article class="workspace-card upload-card" tabindex="0" aria-label="${platform.label}上传区域"><h2>${platform.label}</h2><p>${platform.tip}</p><label for="ad-file-${platform.key}">选择文件，或将文件拖到这里<input id="ad-file-${platform.key}" data-input="${platform.key}" type="file" accept=".xlsx,.xls,.csv" multiple></label><div class="file-list" data-files="${platform.key}"></div></article>`).join('');
+    grid.querySelectorAll('[data-input]').forEach(input => input.addEventListener('change', event => { addFiles(event.target.dataset.input, event.target.files); event.target.value = ''; }));
+    grid.querySelectorAll('.upload-card').forEach(card => {
+      const input = card.querySelector('[data-input]');
+      card.addEventListener('click', event => {
+        if (event.target.closest('label, button, input')) return;
+        input.click();
+      });
+      card.addEventListener('keydown', event => {
+        if ((event.key === 'Enter' || event.key === ' ') && event.target === card) { event.preventDefault(); input.click(); }
+      });
+      card.addEventListener('dragenter', event => { event.preventDefault(); card.classList.add('dragover'); });
+      card.addEventListener('dragover', event => { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'; });
+      card.addEventListener('dragleave', event => {
+        event.preventDefault();
+        if (card.contains(event.relatedTarget)) return;
+        card.classList.remove('dragover');
+      });
+      card.addEventListener('drop', event => {
+        event.preventDefault(); card.classList.remove('dragover');
+        addFiles(input.dataset.input, event.dataTransfer ? event.dataTransfer.files : []);
+      });
+    });
+    grid.addEventListener('click', event => { const button = event.target.closest('[data-remove]'); if (!button) return; files[button.dataset.remove].splice(Number(button.dataset.index), 1); document.getElementById('open-sheet').disabled = true; renderFiles(button.dataset.remove); });
     document.querySelectorAll('[data-scope]').forEach(button => button.addEventListener('click', () => { scope = button.dataset.scope; document.querySelectorAll('[data-scope]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); }));
     document.getElementById('btn-automa-toufang').addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('automa:execute-workflow', { detail: { publicId: 'toufang' } }));
@@ -121,7 +146,18 @@
       document.getElementById('result').innerHTML = `<div class="table-wrap"><table class="result-table"><thead><tr><th>平台</th><th>消耗（元）</th><th>成交金额（元）</th><th>订单数</th><th>ROI</th><th>转化成本（元）</th></tr></thead><tbody>${[...all, grand].map(row => `<tr><td>${escapeHtml(row.platform)}</td><td class="num">${row.cost.toFixed(2)}</td><td class="num">${row.sales.toFixed(2)}</td><td class="num">${row.orders}</td><td class="num">${row.cost ? (row.sales / row.cost).toFixed(2) : '—'}</td><td class="num">${row.orders ? (row.cost / row.orders).toFixed(2) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
     }
     document.getElementById('summarize').addEventListener('click', async () => {
-      try { showStatus('warn', '正在读取并汇总本地投放报表…'); const result = await summarize(); lastRows = result.rows; render(lastRows); document.getElementById('export').disabled = !lastRows.length; showStatus(lastRows.length ? 'ok' : 'err', lastRows.length ? `已汇总 ${lastRows.length} 条有效明细（源数据 ${result.sourceRows} 行${result.skipped ? `，跳过 ${result.skipped} 行` : ''}）。` : '没有找到可汇总的数据。'); } catch (error) { showStatus('err', `汇总失败：${error.message}`); }
+      try { showStatus('warn', '正在读取并汇总本地投放报表…'); const result = await summarize(); lastRows = result.rows; render(lastRows); document.getElementById('export').disabled = !lastRows.length; document.getElementById('open-sheet').disabled = !lastRows.length; showStatus(lastRows.length ? 'ok' : 'err', lastRows.length ? `已汇总 ${lastRows.length} 条有效明细（源数据 ${result.sourceRows} 行${result.skipped ? `，跳过 ${result.skipped} 行` : ''}）。` : '没有找到可汇总的数据。'); } catch (error) { document.getElementById('open-sheet').disabled = true; showStatus('err', `汇总失败：${error.message}`); }
+    });
+    document.getElementById('open-sheet').addEventListener('click', () => {
+      if (!lastRows.length) return;
+      const rows = [['平台','日期','消耗（元）','成交金额（元）','订单数','ROI','转化成本（元）','来源文件']];
+      lastRows.forEach(row => rows.push([row.platform, row.date, row.cost, row.sales, row.orders, row.cost ? row.sales / row.cost : '', row.orders ? row.cost / row.orders : '', row.source]));
+      try {
+        localStorage.setItem('sheetTitle', '投放数据明细');
+        localStorage.setItem('sheetSheets', JSON.stringify([{ name: '投放明细', rows }]));
+        const opened = window.open('sheet.html', '_blank');
+        if (!opened) showStatus('err', '浏览器拦截了新窗口，请允许此网站打开弹出窗口后重试。');
+      } catch (error) { showStatus('err', `打开在线表格失败：${error.message}`); }
     });
     document.getElementById('export').addEventListener('click', () => { if (!lastRows.length) return; const sheet = XLSX.utils.json_to_sheet(lastRows); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, sheet, '投放明细'); XLSX.writeFile(workbook, `投放数据汇总_${new Date().toISOString().slice(0, 10)}.xlsx`); });
   })();

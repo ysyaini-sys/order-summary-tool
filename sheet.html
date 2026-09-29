@@ -70,11 +70,13 @@ var SPECIAL_ID = '3823309765342266082';
 var COL_TYPES = {
   summary:     ['text','id','text','text','dec','dec'],
   orders:      ['id','text','int','int','int','dec','dec'],
-  orderSummary:['text','id','text','int','dec']
+  orderSummary:['text','id','text','int','dec'],
+  adSummary:   ['text','text','dec','dec','int','dec','dec','text']
 };
 
 function detectType(rows) {
   var h = rows[0].join('|');
+  if (h.indexOf('平台') !== -1 && h.indexOf('消耗（元）') !== -1 && h.indexOf('来源文件') !== -1) return 'adSummary';
   if (h.indexOf('包装') !== -1 && h.indexOf('商品ID') !== -1) return 'summary';
   if (h.indexOf('店铺') !== -1 && h.indexOf('商品名') !== -1) return 'orderSummary';
   return 'orders';
@@ -125,6 +127,7 @@ function calcRowspan(rows, r, c) {
 }
 
 function shouldMerge(rows, col, r, type) {
+  if (type === 'adSummary') return false;
   if (type === 'orderSummary') return false;
   if (type === 'summary') {
     return [0, 1, 2, 5].indexOf(col) !== -1;
