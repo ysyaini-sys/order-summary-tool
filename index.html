@@ -391,11 +391,31 @@ function readFile(file, platform){
     if(file.name.toLowerCase().endsWith('.csv')){
       reader.onload = e=>{
         try{
-          var rows = parseCSVText(e.target.result);
+          var buf = new Uint8Array(e.target.result);
+          var text = new TextDecoder('utf-8',{fatal:false}).decode(buf);
+          var rows = parseCSVText(text);
+          if(rows.length>0){
+            var keys = Object.keys(rows[0]).join('|');
+            var hasKeyCol = /商品ID|商品id|商品编码/.test(keys);
+            var hasQtyCol = /商品数量|成交数量|数量/.test(keys);
+            if(!hasKeyCol || !hasQtyCol){
+              try{
+                var textGbk = new TextDecoder('gbk').decode(buf);
+                var rowsGbk = parseCSVText(textGbk);
+                if(rowsGbk.length>0){
+                  var keysGbk = Object.keys(rowsGbk[0]).join('|');
+                  if(/商品ID|商品id|商品编码/.test(keysGbk)){
+                    rows = rowsGbk;
+                    console.log('[编码检测]', file.name, '使用GBK编码');
+                  }
+                }
+              }catch(gbkErr){}
+            }
+          }
           resolve({SheetNames:['Sheet1'], Sheets:{Sheet1: rows}});
         }catch(err){reject(err);}
       };
-      reader.readAsText(file,'utf-8');
+      reader.readAsArrayBuffer(file);
     } else {
       reader.onload = async e=>{
         try{
