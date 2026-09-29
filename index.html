@@ -62,7 +62,6 @@ td.num { text-align:right; font-family:Consolas,monospace; }
 :root{--ink:#1d1d1f;--muted:#6e6e73;--line:#e8e8ed;--canvas:#f5f5f7;--shadow:0 12px 34px rgba(29,29,31,.06)}body{background:var(--canvas);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;letter-spacing:-.01em}.header{background:rgba(29,29,31,.96);padding:17px 28px;box-shadow:0 1px 0 rgba(255,255,255,.08)}.header h1{font-size:19px;letter-spacing:-.03em}.header p{color:#d2d2d7}.header a{color:#fff!important;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.6);padding-bottom:2px}.container{gap:16px;padding:16px}.section{border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px;background:rgba(255,255,255,.88)}.section-head{border-bottom:1px solid var(--line);padding-bottom:12px}.section-head h2{color:var(--ink);font-size:15px;letter-spacing:-.02em}.upload-zone{border:1px dashed #c7c7cc;border-radius:14px;background:#fbfbfd;padding:24px}.upload-zone:hover,.upload-zone.dragover{border-color:#147ce5;background:#f4f8ff}.upload-zone p{color:var(--muted)}.btn{background:var(--ink);border-radius:999px;padding:9px 17px}.btn:hover{background:#424245}.btn-secondary{color:var(--ink);border-color:#c7c7cc;background:#fff}.btn-sheet{background:#147ce5}.btn-automa{background:#6e6e73}.result-msg{border-radius:10px}.result-msg.ok{background:#eaf7ef;color:#16733d}.result-msg.err{background:#fff0f0;color:#b42318}.result-msg.warn{background:#fff8e6;color:#8a5a00}.stat{background:#f5f5f7;border-radius:12px}.stat .value{color:var(--ink)}th{background:#1d1d1f}td{border-color:var(--line)}
 </style>
 <style id="silver-workspace-theme">
-/* Silver workspace theme. Presentation only; do not change import/calculation IDs. */
 :root{--ink:#20232a;--muted:#697382;--line:#e9edf2;--canvas:#f5f7f9;--bg:#f5f7f9;--blue:#0071e3;--shadow:0 8px 30px rgba(46,60,78,.035)}
 html{color-scheme:light}body{margin:0;height:auto;min-height:100vh;overflow:auto;display:block;background:linear-gradient(180deg,#f9fafc 0,#f3f6f8 450px,#f7f8fa 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;letter-spacing:0;font-size:14px;line-height:1.5}
 button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-tap-highlight-color:transparent}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid #0071e3;outline-offset:3px}
@@ -186,7 +185,6 @@ const COMBO_PAIRS = [
   ['山葡萄原汁1箱+冰白葡萄原汁1箱320ml*12罐(到手12罐)','冰白葡萄原汁1箱320ml*6罐+山葡萄原汁1箱320ml*6瓶罐320ml*12罐(到手12罐)'],
   ['冰白葡萄原汁1箱320ml*6瓶+山葡萄原汁1箱320ml*6瓶(到手12瓶)','山葡萄原汁1箱320ml*6瓶+冰白葡萄原汁1箱320ml*6瓶(到手12瓶)']
 ];
-// 规范化规格文本：去空格、统一括号、去掉括号内容（兼容"到手12瓶"和"(2箱)"等不同后缀），用于组合规格匹配
 function normalizeSpec(s){
   return String(s||'').replace(/\s+/g,'').replace(/（/g,'(').replace(/）/g,')').replace(/／/g,'/').replace(/\([^)]*\)/g,'');
 }
@@ -200,9 +198,7 @@ function isComboSpec(spec){
 }
 function findComboPairIdx(spec, pairedSet){
   var n = normalizeSpec(spec);
-  // 瓶组合：包含"+"且同时含"山葡萄"和"冰白葡萄"
   if(n.indexOf('+')>=0 && n.indexOf('山葡萄')>=0 && n.indexOf('冰白葡萄')>=0){
-    // 判断方向：山葡萄在前还是冰白在前
     if(n.indexOf('山葡萄') < n.indexOf('冰白葡萄')){
       return {pairIdx:1, self:'瓶A', other:'瓶B'};
     } else {
@@ -211,7 +207,6 @@ function findComboPairIdx(spec, pairedSet){
   }
   return null;
 }
-// 统一日期解析：Date对象用本地方法（不用toISOString避免UTC偏移），字符串兼容多种格式
 function parseDateVal(dv){
   if(dv instanceof Date){
     var y=dv.getFullYear(), m=String(dv.getMonth()+1).padStart(2,'0'), d=String(dv.getDate()).padStart(2,'0');
@@ -224,9 +219,6 @@ function parseDateVal(dv){
   if(m){ var y=m[3]; if(y.length===2) y='20'+y; return y+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0'); }
   return '';
 }
-
-// 把数据存到 localStorage，新标签页读取
-// sheets: [{name: '子表名', rows: [[...]]}]
 function openSpreadsheet(title, sheets) {
   try {
     localStorage.setItem('sheetTitle', title);
@@ -236,7 +228,6 @@ function openSpreadsheet(title, sheets) {
     alert('打开表格失败：' + e.message);
   }
 }
-
 function setupUpload(tab, onFilesChanged){
   const zone = document.getElementById('upload-'+tab);
   const list = document.getElementById('file-list-'+tab);
@@ -265,7 +256,6 @@ function setupUpload(tab, onFilesChanged){
   return { getFiles:()=>files };
 }
 function showMsg(tab,type,text){ document.getElementById('msg-'+tab).innerHTML='<div class="result-msg '+type+'">'+text+'</div>'; }
-// 手动解析CSV文本，所有值保持字符串，避免SheetJS把长数字ID转成Number导致精度丢失
 function parseCSVText(text){
   if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
   var rows=[], row=[], field='', inQ=false;
@@ -290,8 +280,6 @@ function parseCSVText(text){
     return obj;
   });
 }
-
-// ===== 快手加密xlsx浏览器端解密 (Agile Encryption) =====
 function findCfbEntry(ole, name){
   var dirs = ole.FileIndex || ole.FullPathDirectory || ole.FullPathDir || [];
   for(var i=0; i<dirs.length; i++){
@@ -308,10 +296,8 @@ function cfbContent(entry){
   if(c instanceof Uint8Array) return c;
   if(c instanceof ArrayBuffer) return new Uint8Array(c);
   if(Array.isArray(c)) return new Uint8Array(c);
-  // Try converting
   try { return new Uint8Array(c); } catch(e){ return null; }
 }
-
 async function decryptAgileXlsx(buf, password){
   var cfb = XLSX.CFB;
   if(!cfb || !cfb.read) throw new Error('CFB容器解析不可用，请刷新页面后重试');
@@ -379,7 +365,6 @@ async function decryptAgileXlsx(buf, password){
   var total=out.reduce((n,x)=>n+x.length,0), dec=new Uint8Array(total), pos=0; out.forEach(x=>{dec.set(x,pos);pos+=x.length;});
   return dec.slice(0,size);
 }
-
 function base64ToBytes(b64){
   const bin = atob(b64);
   const arr = new Uint8Array(bin.length);
@@ -400,7 +385,6 @@ function concatBytes(a, b){
   c.set(b, a.length);
   return c;
 }
-
 function readFile(file, platform){
   return new Promise((resolve,reject)=>{
     const reader = new FileReader();
@@ -416,7 +400,6 @@ function readFile(file, platform){
       reader.onload = async e=>{
         try{
           var buf = new Uint8Array(e.target.result);
-          // Check if OLE2 (encrypted file header: D0CF11E0A1B11AE1)
           var isOle = buf.length > 8 && buf[0]===0xD0 && buf[1]===0xCF && buf[2]===0x11 && buf[3]===0xE0;
           if(isOle && platform==='kuaishou'){
             var pw = document.getElementById('ks-password').value.trim();
@@ -436,21 +419,18 @@ function readFile(file, platform){
 function sheetToJson(ws){ return Array.isArray(ws) ? ws : XLSX.utils.sheet_to_json(ws,{defval:''}); }
 function showResult(tab, show){ document.getElementById('result-'+tab).classList.toggle('show', show); }
 const uploads = {};
-
 function getMultiplier(spec){
   if(/30[瓶罐]/.test(spec)) return 5;
   if(/24[瓶罐]/.test(spec)) return 1;
   if(/12[瓶罐]/.test(spec)) return 2;
   return 1;
 }
-// 视频号：从规格文本中提取瓶/罐数
 function extractBottleCount(spec){
   var m=String(spec||'').match(/到手\s*(\d+)\s*[瓶罐]/);
   if(m) return parseInt(m[1]);
   m=String(spec||'').match(/(\d+)\s*[瓶罐]/);
   return m?parseInt(m[1]):0;
 }
-// 视频号的规格信息在"商品属性"列，需要从中提取规格文本
 function extractSpec(attr){
   if(!attr) return '';
   var s=String(attr).trim();
@@ -505,12 +485,11 @@ async function detectDates(files, platform){
     const targetDate = selectedDate;
     showMsg(tab,'warn','正在处理 '+targetDate+'...');
     try {
-      // 按文件独立处理，每个文件一个子表
       let perFileResults = [];
       let totalClosed = 0, grandRows = 0, grandAmount = 0;
-
-      for(const f of files){
-        // Step 1: 读文件，按日期筛选，排除已关闭，按商品ID+规格分组求和
+      for(let fi=0; fi<files.length; fi++){
+        const f = files[fi];
+        console.log('[处理文件]', (fi+1)+'/'+files.length, f.name);
         const wb=await readFile(f, tab);
         let fileRows=[];
         for(const sn of wb.SheetNames){
@@ -537,14 +516,12 @@ async function detectDates(files, platform){
             if(tab!=='shipinhao' && specCol==='商品属性') rawSpec=extractSpec(rawSpec);
             const prodName=nameCol?String(r[nameCol]).trim():'';
             let rowAmount=price*qty;
-            // 快手、抖音：按实付款列计算成交额
             if(tab==='kuaishou' || tab==='douyin'){
               const payCol=Object.keys(r).find(k=>/实付|实际付款|订单金额|支付金额/i.test(k));
               if(payCol){
                 rowAmount=parseFloat(String(r[payCol]).replace(/[¥￥,，\s]/g,''))||0;
               }
             }
-            // 泉阳泉(10000908591826)：固定单价计算成交额（抖音、视频号）
             const rid=String(r[idCol]).trim();
             if((tab==='douyin'||tab==='shipinhao') && rid==='10000908591826'){
               if(/12/.test(rawSpec)) rowAmount=qty*72;
@@ -553,14 +530,11 @@ async function detectDates(files, platform){
             fileRows.push({id:rid, spec:rawSpec, name:prodName, qty:qty, amount:rowAmount});
           }
         }
-        if(fileRows.length===0) continue;
-
-        // Step 1续: 按ID+规格分组，按ID、规格排序
+        if(fileRows.length===0){ console.log('[跳过文件]', f.name, '- 无匹配日期'+targetDate+'的订单'); continue; }
+        console.log('[文件结果]', f.name, '- 匹配订单行数:', fileRows.length);
         const groups={};
         for(const r of fileRows){ const k=r.id+'\u0000'+r.spec; if(!groups[k]) groups[k]={id:r.id,spec:r.spec,name:r.name||'',qty:0,amount:0}; groups[k].qty+=r.qty; groups[k].amount+=r.amount; }
         let grouped=Object.values(groups).sort((a,b)=>{ if(a.id!==b.id) return a.id<b.id?-1:1; return a.spec<b.spec?-1:1; });
-
-        // Step 3: 组合规格配对（抖音/快手用，视频号跳过）
         var comboPaired=new Set(), comboIdxMap={};
         if(tab!=='shipinhao'){
           for(var pi=0;pi<COMBO_PAIRS_NORM.length;pi++){
@@ -584,7 +558,6 @@ async function detectDates(files, platform){
             }
           }
         }
-        // Step 3续: 计算实际数量
         grouped.forEach((g,idx)=>{
           if(tab==='shipinhao'){
             g.bottleCount=extractBottleCount(g.spec);
@@ -597,8 +570,6 @@ async function detectDates(files, platform){
             g.actual=g.qty*getMultiplier(g.spec);
           }
         });
-
-        // Step 4/5: 按商品ID分组，生成扁平行
         const idGroups={};
         grouped.forEach(g=>{ if(!idGroups[g.id]) idGroups[g.id]=[]; idGroups[g.id].push(g); });
         let flatRows=[];
@@ -643,19 +614,14 @@ async function detectDates(files, platform){
             });
           }
         }
-
         const sheetName = f.name.replace(/\.[^.]+$/,'').slice(0,31);
         perFileResults.push({name:sheetName, flatRows:flatRows, rows:fileRows.length, amount:fileRows.reduce((s,r)=>s+r.amount,0)});
         grandRows += fileRows.length;
         grandAmount += fileRows.reduce((s,r)=>s+r.amount,0);
       }
-
       if(perFileResults.length===0){ showMsg(tab,'err','未找到 '+targetDate+' 的有效订单（排除 '+totalClosed+' 条）'); return; }
-
-      // 主页面预览：合并所有文件结果
       let combinedFlat = [];
       perFileResults.forEach(pf=>{ combinedFlat = combinedFlat.concat(pf.flatRows); });
-
       showResult(tab, true);
       document.getElementById('stats-'+tab).innerHTML='<div class="stat"><div class="label">日期</div><div class="value">'+targetDate.slice(5)+'</div></div><div class="stat"><div class="label">文件</div><div class="value">'+perFileResults.length+'</div></div><div class="stat"><div class="label">成交额</div><div class="value">¥'+grandAmount.toFixed(0)+'</div></div>';
       const tbl=document.getElementById('table-'+tab);
@@ -690,7 +656,6 @@ async function detectDates(files, platform){
       pf.flatRows.forEach(r=>{ rows.push([String(r.id||''), r.spec, r.qty, r.actual, r.box, parseFloat(r.amount), r.totalAmount?parseFloat(r.totalAmount):'']); });
       return {name: pf.name, rows: rows};
     });
-    // 抖音用固定15行汇总页，视频号用动态两段式汇总页
     if(tab==='douyin'){
       sheetArr.unshift(buildSummarySheet(sheets));
     } else if(tab==='shipinhao'){
@@ -723,8 +688,6 @@ async function detectDates(files, platform){
     XLSX.writeFile(wb,tab+'_订单汇总_'+(window['_'+tab+'Date']||'')+'.xlsx');
   });
 });
-
-// 快手密码输入后自动重试日期识别
 document.getElementById('ks-password').addEventListener('change', async function(){
   var files = uploads.kuaishou ? uploads.kuaishou.getFiles() : [];
   if(files.length === 0) return;
@@ -744,8 +707,6 @@ document.getElementById('ks-password').addEventListener('change', async function
     area.innerHTML = '<span style="color:#c62828;font-size:12px;">'+(err.message||'重试失败')+'</span>';
   }
 });
-
-// 抖音汇总页（Step 8）：15个固定商品
 function buildSummarySheet(perFileResults){
   const EXCLUDE_ID = '3817189452003016710';
   const QYQ_ID = '3823309765342266082';
@@ -822,11 +783,8 @@ function buildSummarySheet(perFileResults){
   });
   return {name:'汇总',rows:rows};
 }
-
-// 视频号汇总页：两段式（店铺汇总 + 商品明细）
 function buildSPHSummarySheet(perFileResults){
   var rows=[];
-  // 第一段：店铺级汇总
   rows.push(['店铺','商品种类数','规格组合数','总实际数量','总箱数']);
   var grandKinds=0, grandSpecs=0, grandQty=0, grandBox=0;
   var productRows=[];
@@ -839,9 +797,7 @@ function buildSPHSummarySheet(perFileResults){
       totalQty+=r.qty||0;
       var boxVal=r.box||0;
       if(boxVal) totalBox+=parseFloat(boxVal);
-      // 商品明细行：有商品ID的行
       if(r.id){
-        // 特殊ID(10000908591826)每行显示各自规格成交额，其他商品显示合并总额
         var isSp = SPECIAL_IDS.indexOf(r.id) !== -1;
         productRows.push({store:store, id:r.id, name:r.name||'', box:parseFloat(boxVal)||0, amount:parseFloat(isSp ? r.amount : r.totalAmount)||0});
       }
@@ -851,14 +807,12 @@ function buildSPHSummarySheet(perFileResults){
   });
   rows.push(['合计', grandKinds, grandSpecs, grandQty, grandBox]);
   rows.push(['','','','','']);
-  // 第二段：商品明细
   rows.push(['店铺','商品ID','商品名','总箱数','合计成交金额']);
   productRows.forEach(function(p){
     rows.push([p.store, p.id, p.name, p.box, Math.round(p.amount*100)/100]);
   });
   return {name:'汇总',rows:rows};
 }
-
 </script>
 </body>
 </html>
