@@ -1,6 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {analyze,date,number}=require('../qianchuan.js');
+const {analyze,date,number,summarizeProducts,productSummaryRows}=require('../qianchuan.js');
 const headers=['日期','商品ID','商品名称','综合成本','净成交金额','综合营销ROI'];
 const row=['2026-09-22','3823309765342266082','测试商品',100,250,2.5];
 const file=(rows,extra={})=>({name:'账户_2026-09-22_乘方-商品-商品数据明细.xlsx',lastModified:1,rows:[headers,...rows],...extra});
@@ -28,4 +28,47 @@ test('日期、数字、零成本及不安全数字 ID',()=>{
  assert.equal(number('1,234.50'),1234.5);assert.equal(number('--'),null);assert.equal(number('1oops'),null);
  const zero=[...row];zero[3]=0;assert.equal(analyze([file([zero])]).records[0].cost,0);
  const bad=[...row];bad[1]=3823309765342266082;assert.equal(analyze([file([bad])]).records.length,0);
+});
+
+const summaryHeaders=['日期','商品ID','商品名称','整体消耗','净成交金额','整体成交金额','综合成本','1小时内退款订单数','整体成交订单数'];
+const summaryRow=(id='123',name='测试罐装',cost=100,net=250,gross=300,combined=110,refunds=2,orders=10,day='2026-09-28')=>[day,id,name,cost,net,gross,combined,refunds,orders];
+const summaryFile=(account,rows,extra={})=>({name:`${account}_2026-09-28_乘方-商品-商品数据明细.xlsx`,rows:[summaryHeaders,...rows],...extra});
+
+test('千川商品汇总先排除全部行，再允许跨账户同商品聚合并重算比率',()=>{
+ const files=[
+  summaryFile('账户A',[summaryRow('123','测试罐装',100,250,300,110,2,10),summaryRow('123','测试罐装',999,999,999,999,99,99,'全部')]),
+  summaryFile('账户B',[summaryRow('123','测试罐装',50,100,120,55,1,5)])
+ ];
+ const report=summarizeProducts(files,{date:'2026-09-28'});
+ assert.equal(report.aborted,false);assert.equal(report.fileCount,2);assert.equal(report.recordCount,2);assert.equal(report.productCount,1);
+ assert.equal(report.totalCost,150);assert.equal(report.products[0].netSales,350);assert.equal(report.products[0].grossSales,420);
+ assert.equal(report.products[0].refundOrders,3);assert.equal(report.products[0].combinedCost,165);
+ assert.equal(report.products[0].roi,350/150);assert.equal(report.products[0].refundRate,3/15);
+ assert.equal(report.ignoredAll,1);
+ assert.equal(productSummaryRows(report)[0].length,10);assert.equal(productSummaryRows(report)[1][1],'123');
+});
+
+test('千川商品汇总同一文件商品ID重复时终止，不误判跨文件商品ID',()=>{
+ const duplicate=summaryFile('账户A',[summaryRow('123'),summaryRow('123','测试罐装',10,20,30,5,0,1,'2026-09-29')]);
+ const report=summarizeProducts([duplicate,summaryFile('账户B',[summaryRow('123')])],{date:'2026-09-28'});
+ assert.equal(report.aborted,true);assert.equal(report.products.length,0);assert.ok(report.warnings.some(w=>w.includes('账户A')&&w.includes('重复')));
+});
+
+test('千川商品汇总标记包装、按分类和消耗排序并触发质量告警',()=>{
+ const report=summarizeProducts([
+  summaryFile('罐装低',[summaryRow('1','小罐装',10,1,2,3,0,1)]),
+  summaryFile('瓶装',[summaryRow('2','葡萄汁320ml*6瓶装',20,1,2,3,0,1)]),
+  summaryFile('罐装高',[summaryRow('3','大罐装',150,1,2,3,0,1)])
+ ],{date:'2026-09-28'});
+ assert.deepEqual(report.products.map(p=>p.packaging),['罐装','罐装','瓶装']);
+ assert.equal(report.products[0].id,'3');assert.ok(report.warnings.some(w=>w.includes('80%')));
+});
+
+test('退款率缺少总成交订单分母时保持不可计算，零订单时按0处理',()=>{
+ const missing=summaryFile('缺列',[summaryRow()]);missing.rows[0]=summaryHeaders.slice(0,-1);
+ missing.rows[1]=summaryRow().slice(0,-1);
+ const report=summarizeProducts([missing],{date:'2026-09-28'});
+ assert.equal(report.products[0].refundRate,null);assert.ok(report.warnings.some(w=>w.includes('退款率')&&w.includes('总成交订单')));
+ const noOrders=summarizeProducts([summaryFile('零订单',[summaryRow('0','零成本商品',0,0,0,0,0,0)])],{date:'2026-09-28'});
+ assert.equal(noOrders.products[0].roi,null);assert.equal(noOrders.products[0].refundRate,0);
 });

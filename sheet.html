@@ -9,6 +9,8 @@
 body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#f5f7fa; color:#333; padding:16px; }
 .toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
 .toolbar h1 { font-size:17px; color:#2f5597; margin-right:auto; }
+.selection-indicator { padding:7px 10px; border-radius:6px; background:#e7f1ff; color:#174f91; border:1px solid #8bb9ef; font-size:12px; font-weight:700; white-space:nowrap; }
+.selection-indicator[hidden] { display:none; }
 .btn { background:#4472C4; color:#fff; border:none; padding:7px 16px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; }
 .btn:hover { background:#36569e; }
 .btn-green { background:#00b96b; }
@@ -31,7 +33,18 @@ td[contenteditable="true"]:focus { outline:2px solid #4472C4; background:#e8f0fe
 tr:nth-child(even) td { background:#fafbfc; }
 .hint { font-size:11px; color:#999; margin-top:8px; }
 .empty { text-align:center; color:#999; padding:40px; font-size:14px; }
-td.sel { background:#b3d9ff !important; outline:2px solid #4472C4; }
+td.sel { background:#8fc2ff !important; outline:2px solid #1f65bb; outline-offset:-2px; position:relative; z-index:1; }
+.product-ad-summary { table-layout:fixed; }
+.product-ad-summary th:nth-child(1),.product-ad-summary td:nth-child(1){width:7%}
+.product-ad-summary th:nth-child(2),.product-ad-summary td:nth-child(2){width:19%}
+.product-ad-summary th:nth-child(3),.product-ad-summary td:nth-child(3){width:43%}
+.product-ad-summary th:nth-child(4),.product-ad-summary td:nth-child(4){width:8%;white-space:nowrap}
+.product-ad-summary th:nth-child(5),.product-ad-summary td:nth-child(5){width:12%;white-space:nowrap}
+.product-ad-summary th:nth-child(6),.product-ad-summary td:nth-child(6){width:11%;white-space:nowrap}
+.qianchuan-summary { table-layout:fixed;min-width:1350px }
+.qianchuan-summary th:nth-child(1),.qianchuan-summary td:nth-child(1){width:7%}
+.qianchuan-summary th:nth-child(2),.qianchuan-summary td:nth-child(2){width:17%}
+.qianchuan-summary th:nth-child(3),.qianchuan-summary td:nth-child(3){width:28%;white-space:normal}
 .table-wrap { user-select:none; -webkit-user-select:none; }
 .table-wrap td[contenteditable]:focus { user-select:text; -webkit-user-select:text; }
 #toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.75); color:#fff; padding:10px 22px; border-radius:8px; font-size:13px; z-index:9999; opacity:0; transition:opacity .3s; pointer-events:none; }
@@ -42,6 +55,7 @@ td.sel { background:#b3d9ff !important; outline:2px solid #4472C4; }
 <div class="toolbar">
   <h1 id="title">汇总数据</h1>
   <button class="btn btn-green" onclick="copyAll()">📋 复制全部</button>
+  <span id="selection-indicator" class="selection-indicator" aria-live="polite" hidden></span>
   <button class="btn" id="btn-copy-sel" onclick="copySelection()" disabled>📋 复制选区</button>
   <button class="btn" onclick="downloadCSV()">⬇ 下载CSV</button>
   <button class="btn btn-orange" onclick="addRow()">➕ 加一行</button>
@@ -59,6 +73,7 @@ function showToast(msg){
   t._timer=setTimeout(function(){ t.classList.remove('show'); },1800);
 }
 </script>
+<script src="toufang-sheet.js"></script>
 <p class="hint">点击单元格直接编辑 · 鼠标拖选区域后 Ctrl+C 复制 · 表头排序 · 子表间切换顶部标签</p>
 <script>
 var sheets = [];
@@ -69,6 +84,9 @@ var SPECIAL_ID = '3823309765342266082';
 
 var COL_TYPES = {
   summary:     ['text','id','text','text','dec','dec'],
+  productAdSummary: ['text','id','text','text','dec','dec'],
+  qianchuanSummary: ['text','id','text','dec','dec','dec','int','dec','dec','pct'],
+  platformSummary: ['text','dec','dec','int','dec','dec'],
   orders:      ['id','text','int','int','int','dec','dec'],
   orderSummary:['text','id','text','int','dec'],
   adSummary:   ['text','text','dec','dec','int','dec','dec','text']
@@ -76,6 +94,9 @@ var COL_TYPES = {
 
 function detectType(rows) {
   var h = rows[0].join('|');
+  if (h.indexOf('包装') !== -1 && h.indexOf('商品ID') !== -1 && h.indexOf('综合营销ROI') !== -1 && h.indexOf('1小时内退款率') !== -1) return 'qianchuanSummary';
+  if (h.indexOf('包装') !== -1 && h.indexOf('商品ID') !== -1 && h.indexOf('日期') !== -1 && h.indexOf('整体消耗') !== -1 && h.indexOf('总消耗') !== -1) return 'productAdSummary';
+  if (h.indexOf('平台') !== -1 && h.indexOf('消耗（元）') !== -1 && h.indexOf('成交金额（元）') !== -1 && h.indexOf('来源文件') === -1) return 'platformSummary';
   if (h.indexOf('平台') !== -1 && h.indexOf('消耗（元）') !== -1 && h.indexOf('来源文件') !== -1) return 'adSummary';
   if (h.indexOf('包装') !== -1 && h.indexOf('商品ID') !== -1) return 'summary';
   if (h.indexOf('店铺') !== -1 && h.indexOf('商品名') !== -1) return 'orderSummary';
@@ -115,7 +136,7 @@ function switchSheet(i) {
   render();
 }
 
-function calcRowspan(rows, r, c) {
+function calcRowspan(rows, r, c, type) {
   if (rows[r][c] === '' || rows[r][c] === null || rows[r][c] === undefined) return 0;
   var span = 1;
   for (var i = r + 1; i < rows.length; i++) {
@@ -127,6 +148,8 @@ function calcRowspan(rows, r, c) {
 }
 
 function shouldMerge(rows, col, r, type) {
+  if (type === 'qianchuanSummary') return [0, 1, 2].indexOf(col) !== -1;
+  if (type === 'productAdSummary') return [0, 1, 2, 5].indexOf(col) !== -1;
   if (type === 'adSummary') return false;
   if (type === 'orderSummary') return false;
   if (type === 'summary') {
@@ -147,6 +170,7 @@ function formatCell(v, colType) {
   if (v === '' || v === null || v === undefined) return ' ';
   if (typeof v === 'number') {
     if (colType === 'int') return v.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+    if (colType === 'pct') return (v * 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '%';
     if (colType === 'dec') return v.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     return String(v);
   }
@@ -164,7 +188,7 @@ function render() {
   for (var c = 0; c < cols; c++) {
     var arrow = '';
     if (sortCol === c) arrow = sortAsc ? ' ▲' : ' ▼';
-    html += '<th onclick="sortBy(' + c + ')">' + (rows[0][c] === '' ? ' ' : rows[0][c]) + '<span style="font-size:10px;opacity:.7">' + arrow + '</span></th>';
+    html += '<th onclick="sortBy(' + c + ')">' + escapeHTML(rows[0][c] === '' ? ' ' : rows[0][c]) + '<span style="font-size:10px;opacity:.7">' + arrow + '</span></th>';
   }
   html += '<th style="width:36px;position:sticky;right:0;background:#4472C4;"></th>';
   html += '</tr></thead><tbody>';
@@ -174,11 +198,11 @@ function render() {
     for (var c = 0; c < cols; c++) {
       var ct = colTypes[c] || 'text';
       var v = rows[r][c];
-      var display = formatCell(v, ct);
+      var display = escapeHTML(formatCell(v, ct));
 
       var rowspan = '';
       if (shouldMerge(rows, c, r, type)) {
-        var rs = calcRowspan(rows, r, c);
+        var rs = calcRowspan(rows, r, c, type);
         if (rs > 1) rowspan = ' rowspan="' + rs + '"';
         else if (rs === 0) continue;
       }
@@ -189,6 +213,7 @@ function render() {
     html += '</tr>';
   }
   html += '</tbody>';
+  document.getElementById('tbl').className = type === 'productAdSummary' ? 'product-ad-summary' : '';
   document.getElementById('tbl').innerHTML = html;
 
   // Double-click to edit a cell
@@ -255,6 +280,7 @@ function moveFocus(td, back) {
 }
 
 function sortBy(col) {
+  if (detectType(sheets[activeSheet].rows) === 'productAdSummary') return;
   if (sortCol === col) sortAsc = !sortAsc;
   else { sortCol = col; sortAsc = true; }
   var rows = sheets[activeSheet].rows;
@@ -266,6 +292,12 @@ function sortBy(col) {
   });
   sheets[activeSheet].rows = [rows[0]].concat(bodyRows);
   render();
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, function(char) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char];
+  });
 }
 
 function addRow() {
@@ -303,21 +335,91 @@ function syncActiveCell() {
   }
 }
 
-function copyAll() {
-  syncActiveCell();
-  var rows = sheets[activeSheet].rows;
-  var text = rows.map(function(r) { return r.join('\t'); }).join('\n');
-  navigator.clipboard.writeText(text).then(function() {
-    showToast('已复制「' + sheets[activeSheet].name + '」');
+function clipboardTableHtml(rows, rMin, rMax, cMin, cMax, includeHeader, type) {
+  var colTypes = COL_TYPES[type] || [];
+  var html = '<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt;">';
+  if (includeHeader) {
+    html += '<thead><tr>';
+    for (var c = cMin; c <= cMax; c++) {
+      html += '<th style="background:#4472C4;color:#fff;border:1px solid #3a5a8c;padding:7px 9px;text-align:center;font-weight:bold;">' + escapeHTML(rows[0][c] || '') + '</th>';
+    }
+    html += '</tr></thead>';
+  }
+  html += '<tbody>';
+  for (var r = rMin; r <= rMax; r++) {
+    html += '<tr>';
+    for (var c = cMin; c <= cMax; c++) {
+      var value = rows[r][c];
+      var rowspan = 1;
+      if (r > 0 && shouldMerge(rows, c, r, type)) {
+        var owner = r;
+        while (owner > 0 && (rows[owner][c] === '' || rows[owner][c] === null || rows[owner][c] === undefined)) owner--;
+        if (owner < r) {
+          if (owner < rMin || owner >= r) {
+            if (r !== rMin) continue;
+            value = rows[owner][c];
+            rowspan = 1;
+            for (var clipped = rMin + 1; clipped <= rMax && (rows[clipped][c] === '' || rows[clipped][c] === null || rows[clipped][c] === undefined); clipped++) rowspan++;
+          } else {
+            continue;
+          }
+        } else {
+          for (var next = r + 1; next <= rMax && (rows[next][c] === '' || rows[next][c] === null || rows[next][c] === undefined); next++) rowspan++;
+        }
+      }
+      var colType = colTypes[c] || 'text';
+      var align = colType === 'dec' || colType === 'int' ? 'right' : 'center';
+      html += '<td' + (rowspan > 1 ? ' rowspan="' + rowspan + '"' : '') + ' style="border:1px solid #cfd6df;padding:6px 8px;text-align:' + align + ';vertical-align:middle;">' + escapeHTML(formatCell(value, colType)) + '</td>';
+    }
+    html += '</tr>';
+  }
+  return html + '</tbody></table>';
+}
+
+function writeRichClipboard(text, html, successMessage) {
+  var richWrite = navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== 'undefined'
+    ? navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([html], {type:'text/html'}),
+        'text/plain': new Blob([text], {type:'text/plain'})
+      })])
+    : Promise.reject(new Error('Rich clipboard unavailable'));
+  richWrite.then(function() {
+    showToast(successMessage);
   }).catch(function() {
+    var rich = document.createElement('div');
+    rich.contentEditable = 'true';
+    rich.style.cssText = 'position:fixed;left:-10000px;top:0';
+    rich.innerHTML = html;
+    document.body.appendChild(rich);
+    var range = document.createRange();
+    range.selectNodeContents(rich);
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    var copied = document.execCommand('copy');
+    document.body.removeChild(rich);
+    selection.removeAllRanges();
+    if (copied) {
+      showToast(successMessage);
+      return;
+    }
     var ta = document.createElement('textarea');
     ta.value = text;
     document.body.appendChild(ta);
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    showToast('已复制');
+    showToast('已复制纯文本');
   });
+}
+
+function copyAll() {
+  syncActiveCell();
+  var rows = sheets[activeSheet].rows;
+  var type = detectType(rows);
+  var text = rows.map(function(r) { return r.join('\t'); }).join('\n');
+  var html = clipboardTableHtml(rows, 1, rows.length - 1, 0, rows[0].length - 1, true, type);
+  writeRichClipboard(text, html, '已复制「' + sheets[activeSheet].name + '」表格');
 }
 
 function downloadCSV() {
@@ -343,24 +445,41 @@ function downloadCSV() {
 }
 
 // ===== 拖选区域复制 =====
-var selR1 = -1, selC1 = -1, selR2 = -1, selC2 = -1, dragging = false;
+var selR1 = -1, selC1 = -1, selR2 = -1, selC2 = -1, selEffectiveRMin = -1, selEffectiveRMax = -1, dragging = false;
 
-function getCellRC(td) {
+function getCellRC(td, event) {
   if (!td || !td.dataset || td.dataset.row === undefined) return null;
-  return { r: parseInt(td.dataset.row), c: parseInt(td.dataset.col) };
+  var row = parseInt(td.dataset.row);
+  if (event && Number.isFinite(event.clientY)) {
+    var tableRows = Array.from(document.getElementById('tbl').rows).map(function(tr, index) {
+      var rect = tr.getBoundingClientRect();
+      return { index:index, top:rect.top, bottom:rect.bottom };
+    });
+    var visibleRow = ToufangSheet.rowIndexAtY(tableRows, event.clientY);
+    if (visibleRow >= 1) row = visibleRow;
+  }
+  return { r: row, c: parseInt(td.dataset.col) };
 }
 
 function clearSel() {
   document.querySelectorAll('td.sel').forEach(function(t) { t.classList.remove('sel'); });
   selR1 = selC1 = selR2 = selC2 = -1;
+  selEffectiveRMin = selEffectiveRMax = -1;
   document.getElementById('btn-copy-sel').disabled = true;
+  document.getElementById('selection-indicator').hidden = true;
 }
 
 function paintSel() {
   document.querySelectorAll('td.sel').forEach(function(t) { t.classList.remove('sel'); });
   if (selR1 < 0) return;
-  var rMin = Math.min(selR1, selR2), rMax = Math.max(selR1, selR2);
   var cMin = Math.min(selC1, selC2), cMax = Math.max(selC1, selC2);
+  var requestedRMin = Math.min(selR1, selR2), requestedRMax = Math.max(selR1, selR2);
+  var mergedCells = Array.from(document.querySelectorAll('td[data-row][rowspan]')).map(function(td) {
+    return { row:parseInt(td.dataset.row), col:parseInt(td.dataset.col), rowspan:parseInt(td.getAttribute('rowspan')) };
+  });
+  var expanded = ToufangSheet.expandRowRangeForMergedCells(mergedCells, requestedRMin, requestedRMax, cMin, cMax);
+  var rMin = selEffectiveRMin = expanded.start;
+  var rMax = selEffectiveRMax = expanded.end;
   document.querySelectorAll('td[data-row]').forEach(function(td) {
     var rc = getCellRC(td);
     if (!rc) return;
@@ -373,6 +492,9 @@ function paintSel() {
     }
   });
   document.getElementById('btn-copy-sel').disabled = false;
+  var indicator = document.getElementById('selection-indicator');
+  indicator.textContent = '已选 ' + (rMax-rMin+1) + ' 行 × ' + (cMax-cMin+1) + ' 列';
+  indicator.hidden = false;
 }
 
 function bindSelection() {
@@ -385,7 +507,7 @@ function bindSelection() {
     // If currently editing a cell, let text selection work
     if (td.contentEditable === 'true') return;
     e.preventDefault();
-    var rc = getCellRC(td);
+    var rc = getCellRC(td, e);
     if (!rc) return;
     dragging = true;
     selR1 = selR2 = rc.r;
@@ -393,11 +515,11 @@ function bindSelection() {
     paintSel();
   });
 
-  wrap.addEventListener('mouseover', function(e) {
+  wrap.addEventListener('mousemove', function(e) {
     if (!dragging) return;
     var td = e.target.closest('td[data-row]');
     if (!td) return;
-    var rc = getCellRC(td);
+    var rc = getCellRC(td, e);
     if (!rc) return;
     selR2 = rc.r;
     selC2 = rc.c;
@@ -421,7 +543,8 @@ function copySelection() {
   if (selR1 < 0) { showToast('请先拖选区域'); return; }
   syncActiveCell();
   var rows = sheets[activeSheet].rows;
-  var rMin = Math.min(selR1, selR2), rMax = Math.max(selR1, selR2);
+  var rMin = selEffectiveRMin >= 0 ? selEffectiveRMin : Math.min(selR1, selR2);
+  var rMax = selEffectiveRMax >= 0 ? selEffectiveRMax : Math.max(selR1, selR2);
   var cMin = Math.min(selC1, selC2), cMax = Math.max(selC1, selC2);
   var lines = [];
   for (var r = rMin; r <= rMax; r++) {
@@ -438,17 +561,8 @@ function copySelection() {
     lines.push(cells.join('\t'));
   }
   var text = lines.join('\n');
-  navigator.clipboard.writeText(text).then(function() {
-    showToast('已复制 ' + (rMax-rMin+1) + '行×' + (cMax-cMin+1) + '列');
-  }).catch(function() {
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    showToast('已复制选区');
-  });
+  var html = clipboardTableHtml(rows, rMin, rMax, cMin, cMax, false, detectType(rows));
+  writeRichClipboard(text, html, '已复制 ' + (rMax-rMin+1) + '行×' + (cMax-cMin+1) + '列');
 }
 
 init();

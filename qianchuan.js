@@ -59,6 +59,119 @@
     if (!report.records.length) report.warnings.push('没有可用的日期明细行；请检查文件名、字段和日期。');
     return report;
   }
-  root.Qianchuan={analyze,number,date};
+
+  function summarizeProducts(files, options={}) {
+    const report={generatedAt:new Date().toLocaleString('zh-CN'),fileCount:0,recordCount:0,productCount:0,ignoredAll:0,totalCost:0,products:[],warnings:[],aborted:false,previousDayComparison:null};
+    const records=[];
+    let missingOrderColumn=false;
+    let missingOrderValue=false;
+    const aliases={
+      date:['日期'],id:['商品ID'],name:['商品名称'],cost:['整体消耗'],netSales:['净成交金额'],grossSales:['整体成交金额'],combinedCost:['综合成本'],refundOrders:['1小时内退款订单数','1小时内退款订单','一小时内退款订单数'],
+      orders:['整体成交订单数','整体成交订单','整体成交订单量','成交订单数','成交订单量','成交订单','支付订单数','支付订单量','支付订单']
+    };
+    const findColumn=(headers,names)=>headers.findIndex(header=>names.includes(header));
+    const from=options.from||'';
+    const to=options.to||'';
+    const exact=options.date||'';
+
+    for(const file of files){
+      const filename=String(file.name||'');
+      const match=filename.match(pattern);
+      if(!match||match[3]!=='商品数据明细') continue;
+      if(file.error){report.warnings.push(`无法读取 ${filename}：${file.error}`);continue;}
+      const rows=file.rows||[];
+      if(rows.length<2){report.warnings.push(`没有明细行：${filename}`);continue;}
+      const headers=rows[0].map(text);
+      const columns=Object.fromEntries(Object.entries(aliases).map(([key,names])=>[key,findColumn(headers,names)]));
+      const required=['date','id','name','cost','netSales','grossSales','combinedCost','refundOrders'];
+      const missing=required.filter(key=>columns[key]<0).map(key=>aliases[key][0]);
+      if(missing.length){report.warnings.push(`字段不完整：${filename}；缺少 ${missing.join('、')}`);continue;}
+
+      const dataRows=rows.slice(1).filter(row=>text(row[columns.date])!=='全部');
+      report.ignoredAll+=rows.length-1-dataRows.length;
+      report.fileCount++;
+      const seen=new Set();
+      for(const row of dataRows){
+        const id=text(row[columns.id]);
+        if(!id) continue;
+        if(seen.has(id)){
+          report.aborted=true;
+          report.warnings.push(`单文件内商品ID重复，汇总已终止，请核对源文件：${filename} / ${id}`);
+          report.products=[];report.productCount=0;report.recordCount=0;report.totalCost=0;
+          return report;
+        }
+        seen.add(id);
+      }
+
+      if(columns.orders<0){
+        missingOrderColumn=true;
+        report.warnings.push(`缺少总成交订单字段，无法重算1小时内退款率：${filename}`);
+      }
+      for(const row of dataRows){
+        const day=date(row[columns.date]);
+        const id=text(row[columns.id]);
+        if(!day||!id){report.warnings.push(`日期或商品ID无效，已跳过：${filename}`);continue;}
+        const values={
+          cost:number(row[columns.cost]),netSales:number(row[columns.netSales]),grossSales:number(row[columns.grossSales]),
+          combinedCost:number(row[columns.combinedCost]),refundOrders:number(row[columns.refundOrders]),orders:columns.orders<0?null:number(row[columns.orders])
+        };
+        if(values.orders===null&&columns.orders>=0){missingOrderValue=true;report.warnings.push(`总成交订单数缺失，相关商品退款率无法计算：${filename} / ${id}`);}
+        const invalid=Object.entries(values).filter(([key,value])=>key!=='orders'&&value===null).map(([key])=>key);
+        if(invalid.length){report.warnings.push(`指标缺失，已跳过：${filename} / ${id}`);continue;}
+        const record={id,name:text(row[columns.name]),date:day,account:match[1],source:filename,...values};
+        records.push(record);
+      }
+    }
+
+    const selected=records.filter(record=>(!exact||record.date===exact)&&(!from||record.date>=from)&&(!to||record.date<=to));
+    report.recordCount=selected.length;
+    const grouped=new Map();
+    for(const record of selected){
+      const key=JSON.stringify([record.id,record.name]);
+      const product=grouped.get(key)||{id:record.id,name:record.name,cost:0,netSales:0,grossSales:0,refundOrders:0,combinedCost:0,orders:0};
+      product.cost+=record.cost;product.netSales+=record.netSales;product.grossSales+=record.grossSales;
+      product.refundOrders+=record.refundOrders;product.combinedCost+=record.combinedCost;
+      if(record.orders!==null) product.orders+=record.orders;
+      grouped.set(key,product);
+    }
+    report.products=[...grouped.values()].map(product=>({
+      ...product,
+      packaging:/320\s*ml\s*[x×*]\s*6\s*瓶装/i.test(product.name)?'瓶装':'罐装',
+      roi:product.cost>0?product.netSales/product.cost:null,
+      refundRate:missingOrderColumn||missingOrderValue?null:(product.orders>0?product.refundOrders/product.orders:0)
+    })).sort((a,b)=>((a.packaging==='罐装'?0:1)-(b.packaging==='罐装'?0:1))||b.cost-a.cost||a.id.localeCompare(b.id,'zh-CN'));
+    report.productCount=report.products.length;
+    report.totalCost=report.products.reduce((sum,product)=>sum+product.cost,0);
+    if(report.totalCost===0) report.warnings.push('汇总总消耗为0，请检查数据。');
+    if(report.totalCost>0){
+      for(const product of report.products) if(product.cost/report.totalCost>0.8) report.warnings.push(`商品消耗占总消耗超过80%：${product.name||product.id}`);
+    }
+    if(exact){
+      const target=new Date(`${exact}T00:00:00Z`);
+      if(!Number.isNaN(target.getTime())){
+        target.setUTCDate(target.getUTCDate()-1);
+        const previousDate=target.toISOString().slice(0,10);
+        const previousTotal=records.filter(record=>record.date===previousDate).reduce((sum,record)=>sum+record.cost,0);
+        if(previousTotal>0){
+          const change=(report.totalCost-previousTotal)/previousTotal;
+          report.previousDayComparison={date:previousDate,totalCost:previousTotal,change};
+          if(Math.abs(change)>0.5) report.warnings.push(`总消耗较前一日波动超过50%：${(change*100).toFixed(1)}%`);
+        }
+      }
+    }
+    return report;
+  }
+
+  function productSummaryRows(summary) {
+    const rows=[['包装','商品ID','商品名称','整体消耗','净成交金额','整体成交金额','1小时内退款订单数','综合成本','综合营销ROI','1小时内退款率']];
+    for(const product of summary.products||[]) rows.push([
+      product.packaging,product.id,product.name,product.cost,product.netSales,product.grossSales,
+      product.refundOrders,product.combinedCost,product.roi===null?'—':product.roi,
+      product.refundRate===null?'—':product.refundRate
+    ]);
+    return rows;
+  }
+
+  root.Qianchuan={analyze,number,date,summarizeProducts,productSummaryRows};
   if (typeof module!=='undefined') module.exports=root.Qianchuan;
 })(typeof globalThis!=='undefined'?globalThis:this);

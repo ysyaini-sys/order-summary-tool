@@ -6,10 +6,10 @@ const path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'../qianchuan.html'),'utf8');
 const scripts=[...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)];
 const renderer=scripts.find(m=>m[2].includes('function renderReport()'))[2];
-function render(records) {
+function render(records, extra={}) {
  const nodes={};
  for(const m of html.matchAll(/id="([^"]+)"/g))nodes[m[1]]={textContent:'',innerHTML:'',value:''};
- nodes['report-data'].textContent=JSON.stringify({records,warnings:['<unsafe>'],ignoredRows:2});
+ nodes['report-data'].textContent=JSON.stringify({records,warnings:['<unsafe>'],ignoredRows:2,...extra});
  const context={document:{getElementById:id=>nodes[id],querySelectorAll:()=>[]}};
  vm.runInNewContext(renderer,context);
  return nodes;
@@ -23,6 +23,14 @@ test('报告商品总额排除视频；用户输入转义；筛选重新汇总',
  nodes['search-filter'].oninput({target:{value:'不存在'}});assert.equal(nodes['kpi-cost'].textContent,'0.00');
  nodes['search-filter'].oninput({target:{value:'123'}});assert.equal(nodes['kpi-cost'].textContent,'100.00');
  nodes['account-filter'].onchange({target:{value:'其他账户'}});assert.equal(nodes['kpi-roi'].textContent,'—');
+});
+
+test('商品汇总页显示质量统计、缺失分母提示和重算后的比率',()=>{
+ const summary={fileCount:5,recordCount:23,productCount:12,totalCost:19544.48,products:[{packaging:'罐装',id:'123',name:'测试商品',cost:100,netSales:250,grossSales:300,refundOrders:1,combinedCost:110,roi:2.5,refundRate:0.1}],warnings:['缺少总成交订单字段，无法重算1小时内退款率：账户.xlsx']};
+ const nodes=render([],{productSummary:summary});
+ assert.equal(nodes['summary-files'].textContent,5);assert.equal(nodes['summary-records'].textContent,23);assert.equal(nodes['summary-products'].textContent,12);
+ assert.ok(nodes['summary-table'].innerHTML.includes('2.50'));assert.ok(nodes['summary-table'].innerHTML.includes('10.00%'));
+ assert.ok(nodes['summary-warnings'].innerHTML.includes('缺少总成交订单字段'));
 });
 test('无数据、零成本、缺失素材金额不会显示虚构 ROI',()=>{
  assert.equal(render([])['kpi-roi'].textContent,'—');

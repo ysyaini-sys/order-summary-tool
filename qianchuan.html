@@ -44,6 +44,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
 @media(max-width:1000px){.account-row{grid-template-columns:minmax(120px,1fr) 80px 100px 100px 60px;gap:8px}.container{gap:16px}.section{padding:18px}.two-col{grid-template-columns:1fr}.header,.hero{min-height:180px}}
 @media(max-width:760px){.workspace-nav{padding:0 20px;gap:20px;flex-wrap:wrap}.workspace-nav .nav-note{display:none}.header,.workspace-tabs,.container{margin-left:20px;margin-right:20px}.header,.hero{padding:32px 0 24px;min-height:160px}.header p,.hero p{font-size:13px}.container{grid-template-columns:1fr;grid-template-rows:auto}.shell{padding:0 20px 40px}.shell .hero{margin:0}.kpis{grid-template-columns:1fr}.card{min-height:120px}.card strong{font-size:32px}.panel{padding:18px}.toolbar{gap:12px;padding:14px}.control,.control input,.control select{width:100%;min-width:0}.tabs{gap:18px;overflow-x:auto;white-space:nowrap}.tab{padding:12px 0}.account-row{grid-template-columns:1fr 1fr 1fr;gap:8px}.account-name,.bartrack{grid-column:1/-1}.account-head{display:none}.account-row .num{text-align:left}.account-row:not(.account-head) .num:nth-last-child(3):before{content:'成本 ';color:#748090;font-size:11px}.account-row:not(.account-head) .num:nth-last-child(2):before{content:'成交 ';color:#748090;font-size:11px}.account-row .roi:before{content:'ROI ';font-size:11px}#import-panel{padding:18px}#import-panel .import-copy{flex-basis:100%}.workspace-tabs{gap:24px}.stats{grid-template-columns:repeat(2,1fr)}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+.summary-warnings{margin:14px 0}.summary-warning{padding:9px 11px;margin:6px 0;border-radius:7px;background:#fff6e8;color:#855600;font-size:12px}.summary-warning.error{background:#fff0f0;color:#a9231b}.summary-table{min-width:1180px}.summary-table th,.summary-table td{text-align:right;white-space:nowrap}.summary-table th:nth-child(-n+3),.summary-table td:nth-child(-n+3){text-align:left}.summary-table td.product-name{white-space:normal;min-width:280px}
 
 </style>
 </head>
@@ -62,13 +63,14 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
       <header class="workspace-page-heading"><h1>千川商品分析</h1><p><span id="meta-date">选择本地文件后开始分析。</span><span id="meta-files" hidden></span></p></header>
     <div id="import-panel" class="panel"><div class="import-copy"><h2>导入本地文件</h2><p>支持多账户、多日期的乘方商品明细与视频素材 Excel，可直接拖拽文件到此处。</p></div><input id="files" type="file" accept=".xlsx" multiple aria-label="选择千川 Excel 文件"><button id="import-button" type="button">开始分析</button><button id="export-button" type="button" disabled>导出报告</button><p id="import-status" role="status" aria-live="polite">选择或拖拽文件后开始分析，文件仅在浏览器中处理。</p></div>
     <section class="toolbar" aria-label="筛选条件"><div class="control"><label for="date-filter">日期</label><select id="date-filter"></select></div><div class="control"><label for="account-filter">账户</label><select id="account-filter"></select></div><div class="control"><label for="search-filter">查找商品或素材</label><input id="search-filter" type="search" placeholder="输入名称或 ID"></div><div class="toolbar-note" id="selection-note"></div></section>
-    <nav class="tabs" aria-label="报告页面"><button class="tab" data-page="overview" aria-selected="true">总览</button><button class="tab" data-page="products" aria-selected="false">商品</button><button class="tab" data-page="videos" aria-selected="false">视频素材</button><button class="tab" data-page="quality" aria-selected="false">数据检查</button></nav>
+    <nav class="tabs" aria-label="报告页面"><button class="tab" data-page="overview" aria-selected="true">总览</button><button class="tab" data-page="product-summary" aria-selected="false">商品汇总</button><button class="tab" data-page="products" aria-selected="false">商品</button><button class="tab" data-page="videos" aria-selected="false">视频素材</button><button class="tab" data-page="quality" aria-selected="false">数据检查</button></nav>
 
     <section id="overview" class="page active">
       <div class="kpis"><div class="card"><small>整体消耗 · 商品</small><strong id="kpi-cost">—</strong><em>来自商品明细</em></div><div class="card"><small>成交金额 · 商品</small><strong id="kpi-sales">—</strong><em>采用源文件「净成交金额」</em></div><div class="card"><small>整体消耗 ROI</small><strong id="kpi-roi">—</strong><em>成交金额合计 ÷ 整体消耗合计</em></div></div>
       <div class="panel"><div class="panel-head"><h2>账户对比</h2><span class="sub">按商品整体消耗排序</span></div><div id="account-chart"></div></div>
       <div class="two-col"><div class="panel"><div class="panel-head"><h2>商品投入前 5</h2><span class="sub">同商品ID跨账户汇总 · 消耗/成交/ROI</span></div><div id="product-top"></div></div><div class="panel"><div class="panel-head"><h2>视频素材投入前 5</h2><span class="sub">消耗/成交/ROI · 素材维度不计入商品总额</span></div><div id="video-top"></div></div></div>
     </section>
+    <section id="product-summary" class="page"><div class="panel"><div class="panel-head"><div><h2>商品投放汇总</h2><span class="sub" id="summary-period"></span></div><button id="open-product-summary" class="btn btn-sheet" type="button" disabled>打开在线汇总表</button></div><div class="stats"><div class="stat"><strong id="summary-files">0</strong><span>账户文件数</span></div><div class="stat"><strong id="summary-records">0</strong><span>有效明细记录</span></div><div class="stat"><strong id="summary-products">0</strong><span>唯一商品数</span></div><div class="stat"><strong id="summary-cost">0.00</strong><span>总消耗（元）</span></div></div><div id="summary-warnings" class="summary-warnings"></div><div class="tablewrap" id="summary-table"></div></div></section>
     <section id="products" class="page"><div class="panel"><div class="panel-head"><h2>商品明细</h2><span class="sub" id="product-count"></span></div><div class="tablewrap" id="product-table"></div></div></section>
     <section id="videos" class="page"><div class="panel"><div class="panel-head"><h2>视频素材明细</h2><span class="sub" id="video-count"></span></div><div class="tablewrap" id="video-table"></div></div></section>
     <section id="quality" class="page"><div class="panel"><div class="panel-head"><h2>数据检查</h2><span class="sub">生成时间 <span id="generated-at"></span></span></div><div class="stats"><div class="stat"><strong id="stat-files"></strong><span>读取文件</span></div><div class="stat"><strong id="stat-products"></strong><span>商品日期行</span></div><div class="stat"><strong id="stat-videos"></strong><span>视频日期行</span></div><div class="stat"><strong id="stat-all"></strong><span>排除的“全部”行</span></div></div><p>无效或金额缺失的商品行：<span id="stat-ignored"></span></p><div style="margin-top:20px" class="note">按列名识别指标。相同账户、日期和商品或素材 ID 的重复记录，只保留较新文件。商品与视频素材属于不同统计维度，整体消耗和成交金额分别汇总。无整体消耗时，ROI 显示为“—”。</div><h3 style="margin-top:25px;font-size:14px">处理提示</h3><div id="warnings"></div><p class="muted" style="font-size:12px;margin-top:20px">源文件夹：<span id="input-folder"></span></p></div></section>
@@ -103,6 +105,38 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     $('input-folder').textContent = report.inputFolder || '';
     const warnings = report.warnings || [];
     $('warnings').innerHTML = warnings.length ? warnings.map(w=>`<div class="warning">${escapeHtml(w)}</div>`).join('') : '<div class="muted">没有发现字段缺失或重复数值冲突。</div>';
+
+    function renderProductSummary(summary, dateLabel) {
+      summary = summary || {fileCount:0,recordCount:0,productCount:0,totalCost:0,products:[],warnings:[],aborted:false};
+      $('summary-period').textContent = dateLabel && dateLabel !== 'all' ? `日期：${escapeHtml(dateLabel)}` : '日期：全部';
+      $('summary-files').textContent = summary.fileCount || 0;
+      $('summary-records').textContent = summary.recordCount || 0;
+      $('summary-products').textContent = summary.productCount || 0;
+      $('summary-cost').textContent = fmt(summary.totalCost || 0);
+      $('open-product-summary').disabled = Boolean(summary.aborted) || !summary.products?.length;
+      $('summary-warnings').innerHTML = (summary.warnings || []).map(w=>`<div class="summary-warning ${summary.aborted?'error':''}">${escapeHtml(w)}</div>`).join('');
+      if (summary.aborted) {
+        $('summary-table').innerHTML = '<div class="empty">存在单文件商品ID重复，已停止汇总。请核对源文件后重新导入。</div>';
+        return;
+      }
+      if (!summary.products?.length) {
+        $('summary-table').innerHTML = '<div class="empty">当前日期没有可汇总的商品数据。</div>';
+        return;
+      }
+      $('summary-table').innerHTML = `<table class="data-table summary-table"><thead><tr><th>包装</th><th>商品ID</th><th>商品名称</th><th>整体消耗</th><th>净成交金额</th><th>整体成交金额</th><th>1小时内退款订单数</th><th>综合成本</th><th>综合营销ROI</th><th>1小时内退款率</th></tr></thead><tbody>${summary.products.map(p=>`<tr><td>${escapeHtml(p.packaging)}</td><td>${escapeHtml(p.id)}</td><td class="product-name">${escapeHtml(p.name)}</td><td class="number">${fmt(p.cost)}</td><td class="number">${fmt(p.netSales)}</td><td class="number">${fmt(p.grossSales)}</td><td class="number">${fmt(p.refundOrders)}</td><td class="number">${fmt(p.combinedCost)}</td><td class="number">${p.roi===null?'—':p.roi.toFixed(2)}</td><td class="number">${p.refundRate===null?'—':(p.refundRate*100).toFixed(2)+'%'}</td></tr>`).join('')}</tbody></table>`;
+    }
+    function updateProductSummary(selectedDate) {
+      let summary = report.productSummary;
+      const inputs = globalThis.qianchuanInputs || [];
+      if (typeof Qianchuan !== 'undefined' && inputs.length) {
+        summary = Qianchuan.summarizeProducts(inputs, {date:selectedDate === 'all' ? '' : selectedDate});
+        report.productSummary = summary;
+        report.summaryDate = selectedDate;
+        $('report-data').textContent = JSON.stringify(report);
+      }
+      renderProductSummary(summary, selectedDate);
+    }
+    updateProductSummary(state.date);
 
     function selected(kind) {
       const q = state.query.toLocaleLowerCase();
@@ -146,7 +180,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
       const groups=group(products,r=>r.account).sort((a,b)=>b.cost-a.cost), max=Math.max(1,...groups.map(r=>r.cost));
       $('account-chart').innerHTML=groups.length?'<div class="account-row account-head"><div>账户</div><div>消耗占比</div><div class="num">整体消耗</div><div class="num">成交金额</div><div class="num">ROI</div></div>'+groups.map(r=>`<div class="account-row"><div class="account-name" title="${escapeHtml(r.account)}">${escapeHtml(r.account)}</div><div class="bartrack"><div class="barfill" style="width:${Math.max(1,r.cost/max*100).toFixed(2)}%"></div></div><div class="num">${fmt(r.cost)}</div><div class="num">${fmt(r.sales)}</div><div class="num roi ${r.cost>0&&r.sales/r.cost<1?'weak':''}">${roiText(r.cost,r.sales)}</div></div>`).join(''):'<div class="empty">当前筛选条件下没有商品数据</div>';
     }
-    $('date-filter').onchange=e=>{state.date=e.target.value;draw()};
+    $('date-filter').onchange=e=>{state.date=e.target.value;draw();updateProductSummary(state.date)};
     $('account-filter').onchange=e=>{state.account=e.target.value;draw()};
     $('search-filter').value='';
     $('search-filter').oninput=e=>{state.query=e.target.value.trim();draw()};
@@ -164,6 +198,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
   let current = null;
   $('files').onchange = () => {
     current = null;
+    globalThis.qianchuanInputs = [];
     $('export-button').disabled = true;
     $('import-status').textContent = `已选择 ${$('files').files.length} 个文件，请点击开始分析。当前下方仍为上次报告。`;
   };
@@ -212,7 +247,11 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
         } catch (err) {input.error=err.message;}
         inputs.push(input);
       }
+      globalThis.qianchuanInputs = inputs;
       current = Qianchuan.analyze(inputs);
+      const latestDate = current.records.filter(record=>record.kind==='product').map(record=>record.date).sort().at(-1) || '';
+      current.summaryDate = latestDate;
+      current.productSummary = Qianchuan.summarizeProducts(inputs, {date:latestDate});
       $('report-data').textContent=JSON.stringify(current);
       renderReport();
       $('export-button').disabled=!current.records.length;
@@ -220,8 +259,22 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     } catch (err) { $('import-status').textContent='分析失败：'+err.message; }
     finally {$('import-button').disabled=$('files').disabled=false;}
   };
+  $('open-product-summary').onclick = () => {
+    if (!current) return;
+    const summary = JSON.parse($('report-data').textContent).productSummary;
+    if (!summary || summary.aborted || !summary.products.length) return;
+    const rows = Qianchuan.productSummaryRows(summary);
+    try {
+      const period = JSON.parse($('report-data').textContent).summaryDate;
+      const title = period ? `千川商品投放汇总_${period}` : '千川商品投放汇总';
+      localStorage.setItem('sheetTitle', title);
+      localStorage.setItem('sheetSheets', JSON.stringify([{name:'商品汇总',rows}]));
+      if (!window.open('sheet.html', '_blank')) $('import-status').textContent='浏览器拦截了新窗口，请允许此网站打开弹出窗口后重试。';
+    } catch (error) { $('import-status').textContent='打开在线汇总表失败：'+error.message; }
+  };
   $('export-button').onclick = () => {
-    if (!current || !current.records.length) return;
+    if (!current || (!current.records.length && !current.productSummary?.products?.length)) return;
+    current=JSON.parse($('report-data').textContent);
     const doc = document.documentElement.cloneNode(true);
     doc.querySelector('#import-panel').remove();
     doc.querySelector('.workspace-sidebar')?.remove();
