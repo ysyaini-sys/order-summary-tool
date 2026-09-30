@@ -59,16 +59,28 @@
     const statusNode = document.getElementById('status');
     let scope = 'all';
     let lastRows = [];
+    let lastScope = 'all';
 
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
     const asNumber = value => { const number = Number(String(value ?? '').replace(/[¥￥,，\s]/g, '')); return Number.isFinite(number) ? number : 0; };
-    const asDate = value => { const match = String(value ?? '').match(/(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})/); return match ? `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}` : ''; };
+    const asDate = value => {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      const match = String(value ?? '').match(/(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})/);
+      return match ? `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}` : '';
+    };
     const field = (row, expression) => { const key = Object.keys(row).find(name => expression.test(name)); return key ? row[key] : ''; };
 
     function showStatus(kind, message) { statusNode.className = `status show ${kind}`; statusNode.textContent = message; }
     function renderFiles(key) {
       const node = grid.querySelector(`[data-files="${key}"]`);
       node.innerHTML = files[key].map((file, index) => `<div class="file-item"><span>${escapeHtml(file.name)}</span><button type="button" data-remove="${key}" data-index="${index}">移除</button></div>`).join('');
+      const onlineButton = grid.querySelector(`[data-online-sheet="${key}"]`);
+      ToufangSheet.syncUploadButton(onlineButton, files[key].length);
     }
     function addFiles(key, list) {
       const selectedFiles = Array.from(list);
@@ -80,7 +92,7 @@
       if (acceptedFiles.length) document.getElementById('open-sheet').disabled = true;
       renderFiles(key);
     }
-    grid.innerHTML = platforms.map(platform => `<article class="workspace-card upload-card" tabindex="0" aria-label="${platform.label}上传区域"><h2>${platform.label}</h2><p>${platform.tip}</p><label for="ad-file-${platform.key}">选择文件，或将文件拖到这里<input id="ad-file-${platform.key}" data-input="${platform.key}" type="file" accept=".xlsx,.xls,.csv" multiple></label><div class="file-list" data-files="${platform.key}"></div></article>`).join('');
+    grid.innerHTML = platforms.map(platform => `<article class="workspace-card upload-card" tabindex="0" aria-label="${platform.label}上传区域"><h2>${platform.label}</h2><p>${platform.tip}</p><label for="ad-file-${platform.key}">选择文件，或将文件拖到这里<input id="ad-file-${platform.key}" data-input="${platform.key}" type="file" accept=".xlsx,.xls,.csv" multiple></label><div class="file-list" data-files="${platform.key}"></div>${platform.key === 'douyin' ? '<button class="action online-sheet-button" type="button" data-online-sheet="douyin" hidden disabled>在线表格</button>' : ''}</article>`).join('');
     grid.querySelectorAll('[data-input]').forEach(input => input.addEventListener('change', event => { addFiles(event.target.dataset.input, event.target.files); event.target.value = ''; }));
     grid.querySelectorAll('.upload-card').forEach(card => {
       const input = card.querySelector('[data-input]');
@@ -103,7 +115,21 @@
         addFiles(input.dataset.input, event.dataTransfer ? event.dataTransfer.files : []);
       });
     });
-    grid.addEventListener('click', event => { const button = event.target.closest('[data-remove]'); if (!button) return; files[button.dataset.remove].splice(Number(button.dataset.index), 1); document.getElementById('open-sheet').disabled = true; renderFiles(button.dataset.remove); });
+    grid.addEventListener('click', async event => {
+      const onlineButton = event.target.closest('[data-online-sheet]');
+      if (onlineButton) {
+        scope = onlineButton.dataset.onlineSheet;
+        document.querySelectorAll('[data-scope]').forEach(item => item.setAttribute('aria-pressed', String(item.dataset.scope === scope)));
+        const hasRows = await summarizeAndRender();
+        if (hasRows) document.getElementById('open-sheet').click();
+        return;
+      }
+      const button = event.target.closest('[data-remove]');
+      if (!button) return;
+      files[button.dataset.remove].splice(Number(button.dataset.index), 1);
+      document.getElementById('open-sheet').disabled = true;
+      renderFiles(button.dataset.remove);
+    });
     document.querySelectorAll('[data-scope]').forEach(button => button.addEventListener('click', () => { scope = button.dataset.scope; document.querySelectorAll('[data-scope]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); }));
     document.getElementById('btn-automa-toufang').addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('automa:execute-workflow', { detail: { publicId: 'toufang' } }));
@@ -123,7 +149,9 @@
         if (!wanted.includes(platform.key)) continue;
         for (const file of files[platform.key]) {
           const data = await rowsFromFile(file); sourceRows += data.length;
-          for (const row of data) {
+          const dailyData = ToufangSheet.excludeAllDateRows(data, row => field(row, /日期|时间/i));
+          skipped += dailyData.excluded;
+          for (const row of dailyData.rows) {
             const day = asDate(field(row, /日期|时间/i));
             if ((start || end) && !day) { skipped++; continue; }
             if ((start && day < start) || (end && day > end)) continue;
@@ -131,7 +159,9 @@
             const sales = asNumber(field(row, /净成交金额|成交金额|支付金额|成交/i));
             const orders = asNumber(field(row, /成交订单|支付订单|订单数/i));
             if (!cost && !sales && !orders) { skipped++; continue; }
-            rows.push({ platform: platform.label, date: day || '未识别日期', cost, sales, orders, source: file.name });
+            const productId = field(row, /商品ID|商品\s*ID|商品编码/i);
+            const productName = field(row, /商品名称|商品名|商品标题/i);
+            rows.push({ platform: platform.label, date: day || '未识别日期', cost, sales, orders, productId: String(productId ?? '').trim(), productName: String(productName ?? '').trim(), source: file.name });
           }
         }
       }
@@ -145,16 +175,26 @@
       const grand = all.reduce((value, row) => ({ platform: '合计', cost: value.cost + row.cost, sales: value.sales + row.sales, orders: value.orders + row.orders }), { platform: '合计', cost: 0, sales: 0, orders: 0 });
       document.getElementById('result').innerHTML = `<div class="table-wrap"><table class="result-table"><thead><tr><th>平台</th><th>消耗（元）</th><th>成交金额（元）</th><th>订单数</th><th>ROI</th><th>转化成本（元）</th></tr></thead><tbody>${[...all, grand].map(row => `<tr><td>${escapeHtml(row.platform)}</td><td class="num">${row.cost.toFixed(2)}</td><td class="num">${row.sales.toFixed(2)}</td><td class="num">${row.orders}</td><td class="num">${row.cost ? (row.sales / row.cost).toFixed(2) : '—'}</td><td class="num">${row.orders ? (row.cost / row.orders).toFixed(2) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
     }
-    document.getElementById('summarize').addEventListener('click', async () => {
-      try { showStatus('warn', '正在读取并汇总本地投放报表…'); const result = await summarize(); lastRows = result.rows; render(lastRows); document.getElementById('export').disabled = !lastRows.length; document.getElementById('open-sheet').disabled = !lastRows.length; showStatus(lastRows.length ? 'ok' : 'err', lastRows.length ? `已汇总 ${lastRows.length} 条有效明细（源数据 ${result.sourceRows} 行${result.skipped ? `，跳过 ${result.skipped} 行` : ''}）。` : '没有找到可汇总的数据。'); } catch (error) { document.getElementById('open-sheet').disabled = true; showStatus('err', `汇总失败：${error.message}`); }
-    });
+    async function summarizeAndRender() {
+      try { showStatus('warn', '正在读取并汇总本地投放报表…'); const result = await summarize(); lastRows = result.rows; lastScope = scope; render(lastRows); document.getElementById('export').disabled = !lastRows.length; document.getElementById('open-sheet').disabled = !lastRows.length; showStatus(lastRows.length ? 'ok' : 'err', lastRows.length ? `已汇总 ${lastRows.length} 条有效明细（源数据 ${result.sourceRows} 行${result.skipped ? `，跳过 ${result.skipped} 行` : ''}）。` : '没有找到可汇总的数据。'); } catch (error) { document.getElementById('open-sheet').disabled = true; showStatus('err', `汇总失败：${error.message}`); }
+      return lastRows.length > 0;
+    }
+    document.getElementById('summarize').addEventListener('click', summarizeAndRender);
     document.getElementById('open-sheet').addEventListener('click', () => {
       if (!lastRows.length) return;
-      const rows = [['平台','日期','消耗（元）','成交金额（元）','订单数','ROI','转化成本（元）','来源文件']];
-      lastRows.forEach(row => rows.push([row.platform, row.date, row.cost, row.sales, row.orders, row.cost ? row.sales / row.cost : '', row.orders ? row.cost / row.orders : '', row.source]));
+      let rows;
+      if (lastScope === 'douyin') {
+        if (lastRows.some(row => !row.productId || !row.productName)) {
+          showStatus('err', '抖音报表缺少商品ID或商品名称字段，无法生成截图样式的商品明细表。');
+          return;
+        }
+        rows = ToufangSheet.buildDouyinSheetRows(lastRows);
+      } else {
+        rows = ToufangSheet.buildPlatformSummaryRows(lastRows);
+      }
       try {
-        localStorage.setItem('sheetTitle', '投放数据明细');
-        localStorage.setItem('sheetSheets', JSON.stringify([{ name: '投放明细', rows }]));
+        localStorage.setItem('sheetTitle', '投放汇总');
+        localStorage.setItem('sheetSheets', JSON.stringify([{ name: '投放汇总', rows }]));
         const opened = window.open('sheet.html', '_blank');
         if (!opened) showStatus('err', '浏览器拦截了新窗口，请允许此网站打开弹出窗口后重试。');
       } catch (error) { showStatus('err', `打开在线表格失败：${error.message}`); }
@@ -162,5 +202,6 @@
     document.getElementById('export').addEventListener('click', () => { if (!lastRows.length) return; const sheet = XLSX.utils.json_to_sheet(lastRows); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, sheet, '投放明细'); XLSX.writeFile(workbook, `投放数据汇总_${new Date().toISOString().slice(0, 10)}.xlsx`); });
   })();
   </script>
+  <script src="toufang-sheet.js"></script>
 </body>
 </html>
