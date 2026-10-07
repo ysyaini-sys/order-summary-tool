@@ -70,6 +70,11 @@ test('project_checkpoint_can_be_resumed_and_advanced_through_validated_endpoint'
   });
   assert.equal(created.status, 201);
   assert.equal((await created.json()).workflow.currentStage, 'discover');
+  const duplicate = await fetch(`${base}/api/content/projects`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id: 'test-project', name: '重复项目', profileId: 'example-profile' })
+  });
+  assert.equal(duplicate.status, 409);
 
   const advance = await fetch(`${base}/api/content/projects/test-project/advance`, {
     method: 'POST', headers: { 'content-type': 'application/json' },

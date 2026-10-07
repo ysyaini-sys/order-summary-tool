@@ -21,7 +21,7 @@ function nextActionFor(stage) {
 function createContentProject({ id, name, profileId }) {
   if (!validId(id)) throw new Error('invalid project id');
   if (typeof name !== 'string' || !name.trim() || name.length > 160) throw new Error('invalid project name');
-  if (!validId(profileId)) throw new Error('invalid profile id');
+  if (profileId !== null && profileId !== undefined && !validId(profileId)) throw new Error('invalid profile id');
 
   const stages = Object.fromEntries(WORKFLOW_STAGES.map(({ id: stage }, index) => [stage, {
     status: index === 0 ? 'in_progress' : 'pending',
@@ -33,7 +33,7 @@ function createContentProject({ id, name, profileId }) {
   return {
     id,
     name: name.trim(),
-    profileId,
+    profileId: profileId || null,
     status: 'active',
     outputs: [],
     workflow: {

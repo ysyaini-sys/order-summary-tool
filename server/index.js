@@ -34,7 +34,7 @@ function normalizeContentProject(project) {
   const workflowProject = createContentProject({
     id: project.id,
     name: project.name || project.id,
-    profileId: project.profileId || 'example-profile'
+    profileId: project.profileId || null
   });
   const continuation = project.continuation || {};
   const legacyCurrent = String(continuation.current || '').toLowerCase();
@@ -118,6 +118,7 @@ function createServer({ env = process.env, root = process.cwd(), client: clientO
         try {
           const body = JSON.parse(raw || '{}');
           if (req.url === '/api/content/projects') {
+            if (projectStore.listProjects().some(existing => existing.id === body.id)) return json(res, 409, { error: 'project_already_exists' });
             const profile = projectStore.readProfile(body.profileId);
             const project = createContentProject({ id: body.id, name: body.name, profileId: profile.id });
             return json(res, 201, projectStore.createProject(project));

@@ -85,6 +85,7 @@ function createProjectStore({ root }) {
     if (!project || !validId(project.id)) throw new Error('invalid project id');
     if (typeof project.name !== 'string' || !project.name.trim() || project.name.length > 160) throw new Error('invalid project name');
     if (project.profileId !== null && project.profileId !== undefined && !validId(project.profileId)) throw new Error('invalid profile id');
+    if (listProjects().some(existing => existing.id === project.id)) throw new Error('project already exists');
     const dir = dataDir('projects', project.id, { create: true });
     const file = path.join(dir, 'project.json');
     if (fs.existsSync(file)) throw new Error('project already exists');

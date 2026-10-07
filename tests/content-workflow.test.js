@@ -17,6 +17,12 @@ test('creates a six-stage project ready to discover', () => {
   assert.equal(project.workflow.nextAction.stage, 'discover');
 });
 
+test('legacy_projects_can_initialize_without_an_assigned_profile', () => {
+  const project = createContentProject({ id: 'legacy', name: '旧项目', profileId: null });
+  assert.equal(project.profileId, null);
+  assert.equal(project.workflow.currentStage, 'discover');
+});
+
 test('completes the current stage immutably and advances to planning', () => {
   const project = createContentProject({ id: 'launch-1', name: '新品上新', profileId: 'shop-1' });
   const next = advanceContentProject(project, 'discover', {
