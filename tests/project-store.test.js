@@ -40,6 +40,13 @@ test('lists_private_projects', () => {
   assert.equal(store.readProject('launch').name, '新品上新');
 });
 
+test('reads_example_records_by_declared_id_when_folder_name_differs', () => {
+  const root = path.join(__dirname, '..');
+  const store = createProjectStore({ root });
+  assert.equal(store.readProfile('example-profile').name, '示例账号');
+  assert.equal(store.readProject('example-project').name, '示例项目');
+});
+
 test('persists_workflow_checkpoint', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workstation-workflow-save-'));
   const store = createProjectStore({ root });

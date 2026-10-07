@@ -39,6 +39,20 @@ function createProjectStore({ root }) {
     if (!isWithin(rootReal, collectionReal)) throw new Error(`unsafe ${kind} path`);
     const dir = path.join(collectionReal, id);
     if (fs.existsSync(dir) && fs.lstatSync(dir).isSymbolicLink()) throw new Error(`unsafe ${kind.slice(0, -1)} path`);
+    if (!fs.existsSync(dir) && !create) {
+      const metadataFile = kind === 'projects' ? 'project.json' : 'profile.json';
+      const match = fs.readdirSync(collectionReal, { withFileTypes: true })
+        .filter(entry => entry.isDirectory() && !fs.lstatSync(path.join(collectionReal, entry.name)).isSymbolicLink())
+        .find(entry => {
+          const candidate = path.join(collectionReal, entry.name);
+          const file = path.join(candidate, metadataFile);
+          try {
+            const realCandidate = fs.realpathSync(candidate);
+            return isWithin(collectionReal, realCandidate) && JSON.parse(fs.readFileSync(file, 'utf8')).id === id;
+          } catch { return false; }
+        });
+      if (match) return fs.realpathSync(path.join(collectionReal, match.name));
+    }
     if (create) fs.mkdirSync(dir, { recursive: true });
     if (!fs.existsSync(dir)) throw missing(kind.slice(0, -1));
     const realDir = fs.realpathSync(dir);

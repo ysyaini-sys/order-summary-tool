@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>电商内容中心</title>
+  <link rel="stylesheet" href="workspace.css">
+  <style>
+    .content-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.8fr);gap:18px;align-items:start}.cc-card{padding:22px;margin-bottom:18px}.cc-card h2{font-size:17px;margin:0 0 14px}.cc-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cc-field{display:grid;gap:6px;color:#626976;font-size:13px}.cc-field input,.cc-field select,.cc-field textarea{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #dfe2e7;border-radius:9px;background:#fff;color:#20242c;font:inherit}.cc-field textarea{min-height:96px;resize:vertical}.cc-create{display:flex;gap:8px;margin-top:12px}.cc-create input{flex:1;min-width:0;padding:10px 12px;border:1px solid #dfe2e7;border-radius:9px;font:inherit}.cc-button{border:0;border-radius:9px;background:#1769d2;color:#fff;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer}.cc-button.secondary{background:#eef3fa;color:#2c4668}.cc-button:disabled{opacity:.45;cursor:not-allowed}.cc-status{font-size:13px;color:#717986}.cc-stage-list{display:grid;gap:9px}.cc-stage{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid #e5e8ed;border-radius:11px;padding:12px}.cc-stage.current{border-color:#77a9ed;background:#f5f9ff}.cc-stage.completed{background:#f7faf8}.cc-stage-num{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#edf0f4;color:#596273;font-size:12px}.cc-stage.current .cc-stage-num{background:#1769d2;color:white}.cc-stage-title{font-weight:650}.cc-stage-note{font-size:12px;color:#777f8c;margin-top:3px}.cc-stage-state{font-size:11px;color:#727986}.cc-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}.cc-skills{display:grid;gap:10px}.cc-skill{padding:13px;border:1px solid #e8ebef;border-radius:10px}.cc-skill-head{display:flex;justify-content:space-between;gap:10px}.cc-skill-name{font-weight:650}.cc-skill-stage{font-size:11px;color:#1769d2}.cc-skill p{font-size:12px;color:#626976;line-height:1.55;margin:7px 0}.cc-skill button{border:0;background:none;color:#1769d2;padding:0;font:inherit;font-size:12px;cursor:pointer}.cc-ai-result{white-space:pre-wrap;min-height:40px;padding:12px;background:#f7f8fa;border-radius:9px;font-size:13px}.cc-muted{color:#737b87;font-size:13px;line-height:1.6}.cc-divider{border:0;border-top:1px solid #eef0f3;margin:16px 0}
+    @media(max-width:900px){.content-grid{grid-template-columns:1fr}}@media(max-width:560px){.cc-controls{grid-template-columns:1fr}.cc-card{padding:16px}.cc-create{flex-wrap:wrap}.cc-create input{flex-basis:100%}}
+  </style>
+</head>
+<body class="workspace-page">
+  <div class="workspace-shell">
+    <aside class="workspace-sidebar" aria-label="工作区导航">
+      <span class="workspace-sidebar__label">个人工作站</span>
+      <nav>
+        <a href="index.html">订单汇总</a><a href="toufang.html">投放汇总</a><a href="qianchuan.html">千川商品分析</a>
+        <a href="content-center.html" aria-current="page">电商内容中心</a><a href="detail-page.html">商品详情页</a><a href="ai-assistant.html">AI 助手</a>
+      </nav>
+    </aside>
+    <main class="workspace-main">
+      <header class="workspace-page-heading"><h1>电商内容中心</h1><p>从机会发现到内容复盘，项目可随时保存与继续。详情页只是内容生产中的一种技能。</p></header>
+      <div class="content-grid">
+        <section>
+          <article class="workspace-card cc-card">
+            <h2>工作项目</h2>
+            <div class="cc-controls">
+              <label class="cc-field">品牌 Profile<select id="profile-select"></select></label>
+              <label class="cc-field">当前 Project<select id="project-select"></select></label>
+            </div>
+            <form id="create-project-form" class="cc-create">
+              <input id="new-project-name" maxlength="160" placeholder="新项目名称，例如：秋季新品内容计划" required>
+              <button class="cc-button" type="submit">新建 Project</button>
+            </form>
+            <details style="margin-top:12px"><summary style="cursor:pointer;color:#1769d2;font-size:13px">新建 Profile（品牌 / 账号画像）</summary>
+              <form id="create-profile-form" style="display:grid;gap:9px;margin-top:12px">
+                <label class="cc-field">Profile 名称<input id="new-profile-name" maxlength="160" required placeholder="例如：自有品牌官方账号"></label>
+                <label class="cc-field">平台（逗号分隔）<input id="profile-platforms" placeholder="抖音, 天猫"></label>
+                <label class="cc-field">目标受众（逗号分隔）<input id="profile-audience" placeholder="家庭用户, 新手妈妈"></label>
+                <label class="cc-field">表达风格（逗号分隔）<input id="profile-style" placeholder="真诚, 清晰, 克制"></label>
+                <label class="cc-field">内容边界（逗号分隔）<input id="profile-boundaries" placeholder="不夸大功效, 不虚构评价"></label>
+                <button class="cc-button secondary" type="submit">保存 Profile 到本机</button>
+              </form>
+            </details>
+            <p id="workspace-status" class="cc-status" role="status">正在读取本地工作区…</p>
+          </article>
+          <article class="workspace-card cc-card">
+            <h2>六阶段工作流</h2>
+            <div id="workflow-stages" class="cc-stage-list"></div>
+            <hr class="cc-divider">
+            <label class="cc-field">本阶段记录<textarea id="stage-notes" maxlength="10000" placeholder="记录来源、决策、待验证事项或下一步…"></textarea></label>
+            <label class="cc-field" style="margin-top:10px">来源引用（每行一项）<textarea id="stage-sources" placeholder="文件名、链接标题或资料位置；不会自动抓取"></textarea></label>
+            <div class="cc-toolbar">
+              <button id="save-checkpoint" class="cc-button secondary" type="button">保存断点</button>
+              <button id="complete-stage" class="cc-button" type="button">完成本阶段并继续</button>
+              <button id="skip-stage" class="cc-button secondary" type="button">跳过（需写明原因）</button>
+              <button id="export-project" class="cc-button secondary" type="button">导出项目 JSON</button>
+            </div>
+          </article>
+          <article class="workspace-card cc-card">
+            <h2>AI 协作（可选）</h2>
+            <p id="ai-status" class="cc-muted">检查本机 AI 服务状态…</p>
+            <label class="cc-field">当前任务<textarea id="skill-task" placeholder="例如：根据已提供的资料整理三条短视频选题"></textarea></label>
+            <div class="cc-toolbar"><button id="ask-ai" class="cc-button" type="button" disabled>请求 AI 协助</button></div>
+            <pre id="ai-result" class="cc-ai-result" aria-live="polite"></pre>
+          </article>
+        </section>
+        <aside class="workspace-card cc-card">
+          <h2>电商 Skills</h2>
+          <p class="cc-muted">按任务选择能力；每个 Skill 会说明交付物和事实核验边界。</p>
+          <div id="skill-list" class="cc-skills"></div>
+          <p id="output-list" class="cc-muted"></p>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <script src="content-center.js"></script>
+</body>
+</html>
