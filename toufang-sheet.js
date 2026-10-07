@@ -69,30 +69,6 @@
     return rows;
   }
 
-  function buildAiSummary(records, scope, dateFrom, dateTo) {
-    const totals = new Map();
-    for (const record of records) {
-      const row = totals.get(record.platform) || { platform: record.platform, cost: 0, sales: 0, orders: 0 };
-      row.cost += Number(record.cost) || 0;
-      row.sales += Number(record.sales) || 0;
-      row.orders += Number(record.orders) || 0;
-      totals.set(record.platform, row);
-    }
-    const metrics = row => ({
-      platform: row.platform,
-      cost: row.cost,
-      sales: row.sales,
-      orders: row.orders,
-      roi: row.cost ? row.sales / row.cost : null,
-      costPerOrder: row.orders ? row.cost / row.orders : null
-    });
-    const platforms = [...totals.values()].sort((a, b) => a.platform.localeCompare(b.platform, 'zh-CN')).map(metrics);
-    const total = metrics(platforms.reduce((sum, row) => ({
-      platform: '合计', cost: sum.cost + row.cost, sales: sum.sales + row.sales, orders: sum.orders + row.orders
-    }), { platform: '合计', cost: 0, sales: 0, orders: 0 }));
-    return { scope, dateFrom: dateFrom || null, dateTo: dateTo || null, platforms, total };
-  }
-
   function syncUploadButton(button, fileCount) {
     if (!button) return;
     button.hidden = fileCount < 1;
@@ -138,6 +114,6 @@
     return match ? `${Number(match[1])}-${Number(match[2])}` : value;
   }
 
-  root.ToufangSheet = { buildAiSummary, buildDouyinSheetRows, buildPlatformSummaryRows, excludeAllDateRows, expandRowRangeForMergedCells, rowIndexAtY, syncUploadButton };
+  root.ToufangSheet = { buildDouyinSheetRows, buildPlatformSummaryRows, excludeAllDateRows, expandRowRangeForMergedCells, rowIndexAtY, syncUploadButton };
   if (typeof module !== 'undefined') module.exports = root.ToufangSheet;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -15,14 +15,6 @@ function render(records, extra={}) {
  return nodes;
 }
 const record={kind:'product',account:'账户',id:'123',date:'2026-09-22',name:'<img src=x onerror=alert(1)>',cost:100,sales:250};
-test('千川 AI 解读只使用当前筛选的脱敏汇总，且不进入离线导出报告',()=>{
- assert.match(html,/id="explain-qianchuan-ai"/);
- assert.match(html,/id="qianchuan-ai-output"/);
- assert.match(html,/Qianchuan\.buildAiSummary\(records/);
- assert.match(html,/project:\{reportType:'qianchuan-summary',summary\}/);
- assert.match(html,/doc\.querySelector\('#qianchuan-ai-panel'\)\?\.remove\(\)/);
- assert.match(html,/不发送商品名、ID、账户名或原始明细/);
-});
 test('报告商品总额排除视频；用户输入转义；筛选重新汇总',()=>{
  const nodes=render([record,{...record,kind:'video',cost:999,sales:999}]);
  assert.equal(nodes['kpi-cost'].textContent,'100.00');assert.equal(nodes['kpi-roi'].textContent,'2.50');

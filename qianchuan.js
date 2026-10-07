@@ -172,38 +172,6 @@
     return rows;
   }
 
-  function buildAiSummary(records, {date: selectedDate='all', account='all', query=''} = {}) {
-    const search = String(query).trim().toLocaleLowerCase();
-    const products = (records || []).filter(record => record.kind === 'product'
-      && (selectedDate === 'all' || record.date === selectedDate)
-      && (account === 'all' || record.account === account)
-      && (!search || `${record.name} ${record.id} ${record.account}`.toLocaleLowerCase().includes(search)));
-    const total = products.reduce((sum, record) => ({
-      cost: sum.cost + (Number(record.cost) || 0),
-      sales: sum.sales + (Number(record.sales) || 0)
-    }), {cost:0,sales:0});
-    const accountTotals = new Map();
-    for (const record of products) {
-      const value = accountTotals.get(record.account) || {productRows:0,cost:0,sales:0};
-      value.productRows++;
-      value.cost += Number(record.cost) || 0;
-      value.sales += Number(record.sales) || 0;
-      accountTotals.set(record.account,value);
-    }
-    const accounts = [...accountTotals.values()].sort((a,b)=>b.cost-a.cost).map((value,index)=>({
-      label:`账户 ${index+1}`,
-      productRows:value.productRows,
-      cost:value.cost,
-      sales:value.sales,
-      roi:value.cost>0?value.sales/value.cost:null
-    }));
-    return {
-      selection:{date:selectedDate,account:account==='all'?'all':'single-account',searchApplied:Boolean(search)},
-      totals:{productRows:products.length,uniqueProducts:new Set(products.map(record=>record.id)).size,cost:total.cost,sales:total.sales,roi:total.cost>0?total.sales/total.cost:null},
-      accounts
-    };
-  }
-
-  root.Qianchuan={analyze,buildAiSummary,number,date,summarizeProducts,productSummaryRows};
+  root.Qianchuan={analyze,number,date,summarizeProducts,productSummaryRows};
   if (typeof module!=='undefined') module.exports=root.Qianchuan;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -44,7 +44,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
 @media(max-width:1000px){.account-row{grid-template-columns:minmax(120px,1fr) 80px 100px 100px 60px;gap:8px}.container{gap:16px}.section{padding:18px}.two-col{grid-template-columns:1fr}.header,.hero{min-height:180px}}
 @media(max-width:760px){.workspace-nav{padding:0 20px;gap:20px;flex-wrap:wrap}.workspace-nav .nav-note{display:none}.header,.workspace-tabs,.container{margin-left:20px;margin-right:20px}.header,.hero{padding:32px 0 24px;min-height:160px}.header p,.hero p{font-size:13px}.container{grid-template-columns:1fr;grid-template-rows:auto}.shell{padding:0 20px 40px}.shell .hero{margin:0}.kpis{grid-template-columns:1fr}.card{min-height:120px}.card strong{font-size:32px}.panel{padding:18px}.toolbar{gap:12px;padding:14px}.control,.control input,.control select{width:100%;min-width:0}.tabs{gap:18px;overflow-x:auto;white-space:nowrap}.tab{padding:12px 0}.account-row{grid-template-columns:1fr 1fr 1fr;gap:8px}.account-name,.bartrack{grid-column:1/-1}.account-head{display:none}.account-row .num{text-align:left}.account-row:not(.account-head) .num:nth-last-child(3):before{content:'成本 ';color:#748090;font-size:11px}.account-row:not(.account-head) .num:nth-last-child(2):before{content:'成交 ';color:#748090;font-size:11px}.account-row .roi:before{content:'ROI ';font-size:11px}#import-panel{padding:18px}#import-panel .import-copy{flex-basis:100%}.workspace-tabs{gap:24px}.stats{grid-template-columns:repeat(2,1fr)}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
-.summary-warnings{margin:14px 0}.summary-warning{padding:9px 11px;margin:6px 0;border-radius:7px;background:#fff6e8;color:#855600;font-size:12px}.summary-warning.error{background:#fff0f0;color:#a9231b}.summary-table{min-width:1180px}.summary-table th,.summary-table td{text-align:right;white-space:nowrap}.summary-table th:nth-child(-n+3),.summary-table td:nth-child(-n+3){text-align:left}.summary-table td.product-name{white-space:normal;min-width:280px}#qianchuan-ai-output{white-space:pre-wrap;text-align:left;font:inherit;line-height:1.7}
+.summary-warnings{margin:14px 0}.summary-warning{padding:9px 11px;margin:6px 0;border-radius:7px;background:#fff6e8;color:#855600;font-size:12px}.summary-warning.error{background:#fff0f0;color:#a9231b}.summary-table{min-width:1180px}.summary-table th,.summary-table td{text-align:right;white-space:nowrap}.summary-table th:nth-child(-n+3),.summary-table td:nth-child(-n+3){text-align:left}.summary-table td.product-name{white-space:normal;min-width:280px}
 
 </style>
 </head>
@@ -56,8 +56,6 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
         <a href="index.html">订单汇总</a>
         <a href="toufang.html">投放数据汇总</a>
         <a href="qianchuan.html" aria-current="page">千川商品分析</a>
-        <a href="detail-page.html" target="_blank" rel="noopener noreferrer">商品详情页项目</a>
-        <a href="ai-assistant.html" target="_blank" rel="noopener noreferrer">AI 助手</a>
       </nav>
     </aside>
     <main class="workspace-main">
@@ -68,7 +66,6 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     <nav class="tabs" aria-label="报告页面"><button class="tab" data-page="overview" aria-selected="true">总览</button><button class="tab" data-page="product-summary" aria-selected="false">商品汇总</button><button class="tab" data-page="products" aria-selected="false">商品</button><button class="tab" data-page="videos" aria-selected="false">视频素材</button><button class="tab" data-page="quality" aria-selected="false">数据检查</button></nav>
 
     <section id="overview" class="page active">
-      <div class="panel" id="qianchuan-ai-panel"><div class="panel-head"><div><h2>AI 解读</h2><span class="sub">按当前筛选的商品汇总指标分析，不发送商品名、ID、账户名或原始明细</span></div><button class="btn" id="explain-qianchuan-ai" type="button" disabled>解读当前结果</button></div><pre id="qianchuan-ai-output" class="empty" role="status" aria-live="polite">导入并分析千川报表后，可主动请求 AI 解读。</pre></div>
       <div class="kpis"><div class="card"><small>整体消耗 · 商品</small><strong id="kpi-cost">—</strong><em>来自商品明细</em></div><div class="card"><small>成交金额 · 商品</small><strong id="kpi-sales">—</strong><em>采用源文件「净成交金额」</em></div><div class="card"><small>整体消耗 ROI</small><strong id="kpi-roi">—</strong><em>成交金额合计 ÷ 整体消耗合计</em></div></div>
       <div class="panel"><div class="panel-head"><h2>账户对比</h2><span class="sub">按商品整体消耗排序</span></div><div id="account-chart"></div></div>
       <div class="two-col"><div class="panel"><div class="panel-head"><h2>商品投入前 5</h2><span class="sub">同商品ID跨账户汇总 · 消耗/成交/ROI</span></div><div id="product-top"></div></div><div class="panel"><div class="panel-head"><h2>视频素材投入前 5</h2><span class="sub">消耗/成交/ROI · 素材维度不计入商品总额</span></div><div id="video-top"></div></div></div>
@@ -77,7 +74,7 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     <section id="products" class="page"><div class="panel"><div class="panel-head"><h2>商品明细</h2><span class="sub" id="product-count"></span></div><div class="tablewrap" id="product-table"></div></div></section>
     <section id="videos" class="page"><div class="panel"><div class="panel-head"><h2>视频素材明细</h2><span class="sub" id="video-count"></span></div><div class="tablewrap" id="video-table"></div></div></section>
     <section id="quality" class="page"><div class="panel"><div class="panel-head"><h2>数据检查</h2><span class="sub">生成时间 <span id="generated-at"></span></span></div><div class="stats"><div class="stat"><strong id="stat-files"></strong><span>读取文件</span></div><div class="stat"><strong id="stat-products"></strong><span>商品日期行</span></div><div class="stat"><strong id="stat-videos"></strong><span>视频日期行</span></div><div class="stat"><strong id="stat-all"></strong><span>排除的“全部”行</span></div></div><p>无效或金额缺失的商品行：<span id="stat-ignored"></span></p><div style="margin-top:20px" class="note">按列名识别指标。相同账户、日期和商品或素材 ID 的重复记录，只保留较新文件。商品与视频素材属于不同统计维度，整体消耗和成交金额分别汇总。无整体消耗时，ROI 显示为“—”。</div><h3 style="margin-top:25px;font-size:14px">处理提示</h3><div id="warnings"></div><p class="muted" style="font-size:12px;margin-top:20px">源文件夹：<span id="input-folder"></span></p></div></section>
-    <footer>千川商品投放分析 · 固定规则本地生成 · AI 解读由用户主动触发</footer>
+    <footer>千川商品投放分析 · 固定规则本地生成 · 无 AI 调用</footer>
     </main>
   </div>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" data-import-script></script>
@@ -94,7 +91,6 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     const dates = unique(records.map(r=>r.date)).sort();
     const accounts = unique(records.map(r=>r.account));
     const state = {date:dates.at(-1) || 'all', account:'all', query:''};
-    let aiRequest = 0;
     $('meta-date').textContent = dates.length ? `${dates[0]}${dates.length>1?' 至 '+dates.at(-1):''}` : '暂无日期';
     $('meta-files').textContent = `${report.fileCount || 0} 个文件 · ${accounts.length} 个账户`;
     $('date-filter').innerHTML = `<option value="all">全部日期</option>${dates.map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('')}`;
@@ -170,7 +166,6 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
       return [...items].sort((a,b)=>b.cost-a.cost).slice(0,5).map((r,i)=>`<div style="display:grid;grid-template-columns:25px 1fr auto;gap:9px 12px;align-items:start;padding:11px 0;border-top:1px solid var(--line)"><span class="muted">${i+1}</span><span style="overflow:hidden;word-break:break-word;line-height:1.4" title="${escapeHtml(r.account)} · ${escapeHtml(r.name)}">${escapeHtml(r.name||r.id)}</span><div style="text-align:right;font-size:12px;line-height:1.6;white-space:nowrap"><div>消耗 <strong>${r.missingCost?'—':fmt(r.cost)}</strong></div><div>成交 <strong>${r.missingSales?'—':fmt(r.sales)}</strong> · ROI <span class="roi ${r.cost>0&&r.sales/r.cost<1?'weak':''}">${r.missingCost||r.missingSales?'—':roiText(r.cost,r.sales)}</span></div></div></div>`).join('');
     }
     function draw(){
-      aiRequest += 1;
       const products=selected('product'), videos=selected('video');
       const p=group(products,r=>JSON.stringify([r.account,r.id])), v=group(videos,r=>JSON.stringify([r.account,r.id]));
       const pTop=group(products,r=>r.id);
@@ -182,8 +177,6 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
       $('product-table').innerHTML=detailTable(p,'product');
       $('video-table').innerHTML=detailTable(v,'video');
       $('product-top').innerHTML=topList(pTop); $('video-top').innerHTML=topList(v);
-      $('explain-qianchuan-ai').disabled=!products.length;
-      $('qianchuan-ai-output').textContent=products.length?'当前筛选已更新。可请求 AI 解读。':'当前筛选下没有商品数据，无法请求 AI 解读。';
       const groups=group(products,r=>r.account).sort((a,b)=>b.cost-a.cost), max=Math.max(1,...groups.map(r=>r.cost));
       $('account-chart').innerHTML=groups.length?'<div class="account-row account-head"><div>账户</div><div>消耗占比</div><div class="num">整体消耗</div><div class="num">成交金额</div><div class="num">ROI</div></div>'+groups.map(r=>`<div class="account-row"><div class="account-name" title="${escapeHtml(r.account)}">${escapeHtml(r.account)}</div><div class="bartrack"><div class="barfill" style="width:${Math.max(1,r.cost/max*100).toFixed(2)}%"></div></div><div class="num">${fmt(r.cost)}</div><div class="num">${fmt(r.sales)}</div><div class="num roi ${r.cost>0&&r.sales/r.cost<1?'weak':''}">${roiText(r.cost,r.sales)}</div></div>`).join(''):'<div class="empty">当前筛选条件下没有商品数据</div>';
     }
@@ -191,30 +184,6 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     $('account-filter').onchange=e=>{state.account=e.target.value;draw()};
     $('search-filter').value='';
     $('search-filter').oninput=e=>{state.query=e.target.value.trim();draw()};
-    $('explain-qianchuan-ai').onclick=async()=>{
-      const button=$('explain-qianchuan-ai');
-      const requestId=++aiRequest;
-      button.disabled=true;
-      $('qianchuan-ai-output').textContent='正在请求 AI 解读…';
-      const summary=Qianchuan.buildAiSummary(records,{date:state.date,account:state.account,query:state.query});
-      try{
-        const response=await fetch('/api/assistant',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
-          task:'请解释这份千川商品投放汇总数据：概括总览和匿名账户间的差异，指出需要关注的现象及数据限制。不要推断未提供的信息，不要把相关性当成因果，不要建议直接修改投放。ROI 以给定汇总为准。',
-          project:{reportType:'qianchuan-summary',summary}
-        })});
-        const result=await response.json();
-        if(requestId!==aiRequest)return;
-        if(!response.ok)throw new Error(result.message||'AI 服务暂不可用。');
-        $('qianchuan-ai-output').textContent=result.response?.output_text||'AI 未返回可显示的文字结果。';
-      }catch(error){
-        if(requestId===aiRequest){
-          const message=error instanceof TypeError?'无法连接本机 AI 服务。请先启动服务，并通过 http://127.0.0.1:8787/qianchuan.html 打开此页面。':error.message;
-          $('qianchuan-ai-output').textContent=`AI 解读失败：${message}`;
-        }
-      }finally{
-        if(requestId===aiRequest)button.disabled=!selected('product').length;
-      }
-    };
     document.querySelectorAll('.tab').forEach(btn=>btn.onclick=()=>{
       document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',String(x===btn)));
       document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===btn.dataset.page));
@@ -231,8 +200,6 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     current = null;
     globalThis.qianchuanInputs = [];
     $('export-button').disabled = true;
-    $('explain-qianchuan-ai').disabled = true;
-    $('qianchuan-ai-output').textContent = '已选择新文件，请完成分析后再请求 AI 解读。';
     $('import-status').textContent = `已选择 ${$('files').files.length} 个文件，请点击开始分析。当前下方仍为上次报告。`;
   };
   // 拖拽上传
@@ -309,8 +276,6 @@ button,input,select{font:inherit}a{color:inherit}button,a,input,select{ -webkit-
     if (!current || (!current.records.length && !current.productSummary?.products?.length)) return;
     current=JSON.parse($('report-data').textContent);
     const doc = document.documentElement.cloneNode(true);
-    doc.querySelector('#qianchuan-ai-panel')?.remove();
-    doc.querySelector('#qianchuan-ai-panel')?.remove();
     doc.querySelector('#import-panel').remove();
     doc.querySelector('.workspace-sidebar')?.remove();
     doc.querySelector('.workspace-shell')?.classList.remove('workspace-shell');
