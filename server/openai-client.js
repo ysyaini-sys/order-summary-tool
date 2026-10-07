@@ -1,17 +1,32 @@
-function createOpenAIClient(env = process.env) {
-  const apiKey = env.OPENAI_API_KEY;
+function responseEndpoint(baseUrl) {
+  const normalized = String(baseUrl).replace(/\/+$/, '');
+  if (normalized.endsWith('/responses')) return normalized;
+  if (normalized.endsWith('/v1')) return `${normalized}/responses`;
+  return `${normalized}/v1/responses`;
+}
+
+function createOpenAIClient(env = process.env, fetchImpl = fetch) {
+  const gatewayToken = env.OPENCLAW_GATEWAY_TOKEN;
+  const apiKey = gatewayToken || env.OPENAI_API_KEY;
   if (!apiKey) return null;
+
+  const provider = gatewayToken ? 'openclaw' : 'openai';
+  const baseUrl = env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  const model = env.OPENAI_MODEL || (provider === 'openclaw' ? 'openclaw/default' : 'gpt-5');
+  const endpoint = responseEndpoint(baseUrl);
+
   return {
-    async respond({ model = env.OPENAI_MODEL || 'gpt-5', input, tools = [] }) {
-      const response = await fetch('https://api.openai.com/v1/responses', {
+    provider,
+    async respond({ input, tools = [] }) {
+      const response = await fetchImpl(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({ model, input, tools, store: false })
       });
-      if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
+      if (!response.ok) throw new Error(`AI provider request failed: ${response.status}`);
       return response.json();
     }
   };
 }
 
-module.exports = { createOpenAIClient };
+module.exports = { createOpenAIClient, responseEndpoint };

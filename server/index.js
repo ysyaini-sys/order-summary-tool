@@ -33,7 +33,11 @@ function createServer({ env = process.env, root = process.cwd(), client: clientO
   const projectStore = createProjectStore({ root });
   return http.createServer((req, res) => {
     if (req.method === 'GET' && serveStatic(req, res, root)) return;
-    if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, aiConfigured: Boolean(client) });
+    if (req.method === 'GET' && req.url === '/health') return json(res, 200, {
+      ok: true,
+      aiConfigured: Boolean(client),
+      provider: client?.provider || null
+    });
     if (req.method === 'GET' && req.url === '/api/tools') return json(res, 200, { tools: registry.list(), canWrite: registry.canWrite });
     if (req.method === 'GET' && req.url.startsWith('/api/context')) {
       try {

@@ -43,6 +43,22 @@ test('reports safe AI-not-configured status without fabricating a response', asy
   assert.equal(body.error, 'ai_not_configured');
 });
 
+test('does_not_expose_provider_secrets_in_health', async () => {
+  const server = createServer({
+    env: { OPENAI_BASE_URL: 'http://127.0.0.1:18789/v1', OPENCLAW_GATEWAY_TOKEN: 'test-gateway-token' },
+    root: require('node:path').join(__dirname, '..')
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/health`);
+  const body = await response.json();
+  await new Promise(resolve => server.close(resolve));
+
+  assert.equal(body.aiConfigured, true);
+  assert.equal(body.provider, 'openclaw');
+  assert.equal(JSON.stringify(body).includes('test-gateway-token'), false);
+  assert.equal(JSON.stringify(body).includes('127.0.0.1'), false);
+});
+
 test('exposes bounded project context endpoint', async () => {
   const server = createServer({ env: {}, root: require('node:path').join(__dirname, '..') });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
