@@ -9,6 +9,7 @@ test('tool registry exposes only bounded read tools', () => {
   const tools = createToolRegistry({ root });
   assert.deepEqual(tools.list().sort(), ['read_baseline', 'read_profile', 'read_project']);
   assert.equal(tools.canWrite, false);
+  assert.equal(tools.list().some(name => /write|save|publish|delete/i.test(name)), false);
 });
 
 test('reads the example project without allowing path traversal', () => {

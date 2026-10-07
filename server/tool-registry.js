@@ -1,28 +1,17 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { createProjectStore } = require('./project-store.js');
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-function safeId(value) {
-  return typeof value === 'string' && /^[a-zA-Z0-9_-]+$/.test(value);
-}
-
 function createToolRegistry({ root }) {
+  const store = createProjectStore({ root });
   const tools = {
     read_baseline: () => readJson(path.join(root, 'workstation', 'baseline.json')),
-    read_profile: ({ profileId = 'example' } = {}) => {
-      if (!safeId(profileId)) throw new Error('invalid profile id');
-      return readJson(path.join(root, 'profiles', profileId, 'profile.json'));
-    },
-    read_project: ({ projectId = 'example' } = {}) => {
-      if (!safeId(projectId)) throw new Error('invalid project id');
-      const projectRoot = path.join(root, 'projects', projectId);
-      const project = readJson(path.join(projectRoot, 'project.json'));
-      const continuationFile = path.join(projectRoot, 'continuation.json');
-      return fs.existsSync(continuationFile) ? { ...project, continuation: readJson(continuationFile) } : project;
-    }
+    read_profile: ({ profileId = 'example' } = {}) => store.readProfile(profileId),
+    read_project: ({ projectId = 'example' } = {}) => store.readProject(projectId)
   };
   return {
     canWrite: false,

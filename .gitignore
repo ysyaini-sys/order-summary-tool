@@ -1,0 +1,9 @@
+# Local account profiles and user projects stay on this device.
+/profiles/*
+!/profiles/README.md
+!/profiles/example/
+!/profiles/example/**
+/projects/*
+!/projects/README.md
+!/projects/example/
+!/projects/example/**
