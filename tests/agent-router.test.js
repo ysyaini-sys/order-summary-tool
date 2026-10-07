@@ -10,6 +10,7 @@ test('routes_ecommerce_tasks_to_registered_skills', () => {
   assert.equal(routeTask('写一个抖音短视频脚本', skills), 'short-video-script');
   assert.equal(routeTask('审核这批广告素材', skills), 'creative-review');
   assert.equal(routeTask('商品详情页首屏文案', skills), 'product-detail');
+  assert.equal(routeTask('商品详情', skills), 'product-detail');
   assert.equal(routeTask('总结本周内容复盘', skills), 'content-retrospective');
 });
 

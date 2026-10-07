@@ -103,6 +103,32 @@ test('rejects_path_traversal', t => {
   assert.equal(fs.existsSync(path.join(outside, 'escape', 'project.json')), false);
 });
 
+test('rejects_symlinked_project_continuation_and_output_json_files', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workstation-file-symlink-'));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'workstation-file-outside-'));
+  t.after(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(outside, { recursive: true, force: true });
+  });
+  const store = createProjectStore({ root });
+  store.createProject({ id: 'demo', name: 'demo', profileId: null });
+  const dir = path.join(root, 'projects', 'demo');
+  const outsideJson = path.join(outside, 'data.json');
+  fs.writeFileSync(outsideJson, JSON.stringify({ private: 'outside' }));
+
+  fs.symlinkSync(outsideJson, path.join(dir, 'continuation.json'));
+  assert.throws(() => store.readProject('demo'), /unsafe/i);
+  fs.unlinkSync(path.join(dir, 'continuation.json'));
+
+  fs.mkdirSync(path.join(dir, 'ai-results'));
+  fs.symlinkSync(outsideJson, path.join(dir, 'ai-results', 'v1.json'));
+  assert.throws(() => store.listOutputs('demo'), /unsafe/i);
+
+  fs.unlinkSync(path.join(dir, 'project.json'));
+  fs.symlinkSync(outsideJson, path.join(dir, 'project.json'));
+  assert.throws(() => store.readProject('demo'), /unsafe/i);
+});
+
 test('gitignores private runtime data but keeps examples trackable', () => {
   const root = path.join(__dirname, '..');
   const ignoredProject = spawnSync('git', ['check-ignore', '--no-index', '-q', 'projects/private/project.json'], { cwd: root });

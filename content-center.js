@@ -78,7 +78,7 @@
     const id = `project-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     try {
       const project = await request('/api/content/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, name, profileId: state.profile.id }) });
-      state.projects.push(project); setOptions($('project-select'), state.projects, project.id, item => item.name); state.project = project; renderStages(); $('new-project-name').value = ''; status('新 Project 已创建并保存在本机。');
+      state.projects.push(project); setOptions($('project-select'), state.projects, project.id, item => item.name); state.project = project; $('ask-ai').disabled = !state.aiConfigured; renderStages(); $('new-project-name').value = ''; status('新 Project 已创建并保存在本机。');
     } catch (error) { status(error.message); }
   });
   $('create-profile-form').addEventListener('submit', async event => {

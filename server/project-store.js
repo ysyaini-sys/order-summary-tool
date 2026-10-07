@@ -48,7 +48,7 @@ function createProjectStore({ root }) {
           const file = path.join(candidate, metadataFile);
           try {
             const realCandidate = fs.realpathSync(candidate);
-            return isWithin(collectionReal, realCandidate) && JSON.parse(fs.readFileSync(file, 'utf8')).id === id;
+            return isWithin(collectionReal, realCandidate) && readJson(file, realCandidate).id === id;
           } catch { return false; }
         });
       if (match) return fs.realpathSync(path.join(collectionReal, match.name));
@@ -60,7 +60,19 @@ function createProjectStore({ root }) {
     return realDir;
   }
 
-  function readJson(file) {
+  function entryExists(file) {
+    try { fs.lstatSync(file); return true; }
+    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+  }
+
+  function readJson(file, parentDirectory) {
+    if (parentDirectory) {
+      const entry = fs.lstatSync(file);
+      if (entry.isSymbolicLink()) throw new Error('unsafe data file path');
+      const parentReal = fs.realpathSync(parentDirectory);
+      const fileReal = fs.realpathSync(file);
+      if (!isWithin(parentReal, fileReal)) throw new Error('unsafe data file path');
+    }
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   }
 
@@ -75,9 +87,9 @@ function createProjectStore({ root }) {
 
   function readProject(projectId) {
     const dir = dataDir('projects', projectId);
-    const project = readJson(path.join(dir, 'project.json'));
+    const project = readJson(path.join(dir, 'project.json'), dir);
     const continuationFile = path.join(dir, 'continuation.json');
-    const continuation = fs.existsSync(continuationFile) ? readJson(continuationFile) : null;
+    const continuation = entryExists(continuationFile) ? readJson(continuationFile, dir) : null;
     return continuation ? { ...project, continuation } : project;
   }
 
@@ -121,7 +133,8 @@ function createProjectStore({ root }) {
   }
 
   function readProfile(profileId) {
-    return readJson(path.join(dataDir('profiles', profileId), 'profile.json'));
+    const dir = dataDir('profiles', profileId);
+    return readJson(path.join(dir, 'profile.json'), dir);
   }
 
   function saveProfile(profileId, profile) {
@@ -150,7 +163,7 @@ function createProjectStore({ root }) {
     return fs.readdirSync(outputDir)
       .filter(file => /^v\d+\.json$/.test(file))
       .sort((a, b) => Number(a.slice(1, -5)) - Number(b.slice(1, -5)))
-      .map(file => readJson(path.join(outputDir, file)));
+      .map(file => readJson(path.join(outputDir, file), outputDir));
   }
 
   function saveAIResult(projectId, result) {
@@ -171,7 +184,7 @@ function createProjectStore({ root }) {
     const record = { version, createdAt: new Date().toISOString(), ...result };
     writeJson(path.join(outputDir, `v${version}.json`), record);
     const continuationFile = path.join(dir, 'continuation.json');
-    const continuation = fs.existsSync(continuationFile) ? readJson(continuationFile) : {};
+    const continuation = entryExists(continuationFile) ? readJson(continuationFile, dir) : {};
     if (result.continuation) Object.assign(continuation, result.continuation);
     continuation.lastAISkill = result.skill || null;
     continuation.lastAIResultVersion = version;

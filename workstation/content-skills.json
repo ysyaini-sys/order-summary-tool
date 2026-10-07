@@ -39,7 +39,7 @@
     "id": "product-detail",
     "name": "商品详情页",
     "stage": "produce",
-    "keywords": ["商品详情页", "详情页", "商品页", "产品详情", "product detail"],
+    "keywords": ["商品详情页", "商品详情", "详情页", "商品页", "产品详情", "product detail"],
     "description": "产出商品页面结构、模块文案和视觉说明；是内容生产中的一种能力。",
     "deliverable": "页面蓝图、模块文案、素材清单与证据状态",
     "evidenceRule": "商品身份资料不足时阻止正式成稿；未核验卖点不得写成事实。"

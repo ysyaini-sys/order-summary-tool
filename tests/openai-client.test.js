@@ -39,6 +39,24 @@ test('uses_configured_openclaw_compatible_endpoint', async () => {
   assert.equal(JSON.parse(request.options.body).model, 'openclaw/default');
 });
 
+test('openclaw_defaults_to_loopback_and_rejects_nonlocal_token_destinations', async () => {
+  let endpoint;
+  const defaultClient = createOpenAIClient({ OPENCLAW_GATEWAY_TOKEN: 'local-token' }, async url => {
+    endpoint = url;
+    return { ok: true, async json() { return {}; } };
+  });
+  assert.ok(defaultClient);
+  assert.equal(defaultClient.provider, 'openclaw');
+  await defaultClient.respond({ input: 'test' });
+  assert.equal(endpoint, 'http://127.0.0.1:18789/v1/responses');
+
+  const remoteClient = createOpenAIClient({
+    OPENCLAW_GATEWAY_TOKEN: 'local-token',
+    OPENAI_BASE_URL: 'https://api.openai.com/v1'
+  }, async () => {});
+  assert.equal(remoteClient, null);
+});
+
 test('reports_provider_http_errors_without_body', async t => {
   const fakeFetch = async () => ({
     ok: false,

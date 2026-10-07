@@ -37,6 +37,7 @@ test('content_center_renders_all_stages_and_skills', () => {
   assert.match(page, /id="skill-list"/);
   assert.match(script, /discover/);
   assert.match(script, /aiConfigured/);
+  assert.match(script, /state\.project = project;[\s\S]{0,120}\$\('ask-ai'\)\.disabled = !state\.aiConfigured/);
 });
 
 test('content_center_works_without_ai_and_serves_registered_skills', async t => {

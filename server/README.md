@@ -18,7 +18,7 @@ export OPENCLAW_GATEWAY_TOKEN='你的本机 Gateway token'
 node server/index.js
 ```
 
-`18789` 是 OpenClaw Gateway 常见默认端口；若你的实例使用其他端口或模型别名，请以本机 Gateway 配置为准。Gateway token 只由服务端发送，不能写入 HTML、浏览器存储、Profile/Project 文件或 Git。`/health` 仅显示是否配置及提供方名称，不返回地址或凭据。若同时设置 `OPENCLAW_GATEWAY_TOKEN` 和 `OPENAI_API_KEY`，当前配置会选择 OpenClaw；不设置 Gateway token 时保持默认 OpenAI 行为。
+`18789` 是 OpenClaw Gateway 常见默认端口；若你的实例使用其他本机端口或模型别名，请以本机 Gateway 配置为准。未显式设置 `OPENAI_BASE_URL` 时，Gateway token 默认只发往 `127.0.0.1:18789`；如果配置的 Gateway 地址不是 loopback，本服务会拒绝创建该 provider，防止把 Gateway token 发往外部。Gateway token 只由服务端发送，不能写入 HTML、浏览器存储、Profile/Project 文件或 Git。`/health` 仅显示是否配置及提供方名称，不返回地址或凭据。若同时设置 `OPENCLAW_GATEWAY_TOKEN` 和 `OPENAI_API_KEY`，当前配置会选择 OpenClaw；不设置 Gateway token 时保持默认 OpenAI 行为。
 
 默认监听 `127.0.0.1:8787`。从 `http://127.0.0.1:8787/content-center.html` 打开通用电商内容中心，也可打开 AI 助手或商品详情页工作台。助手最近 12 条对话按 Project ID 保存在浏览器本地存储，可单独清空。
 
