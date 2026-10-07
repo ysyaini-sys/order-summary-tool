@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>工作台 AI 助手</title>
+  <style>body{max-width:900px;margin:0 auto;padding:32px 20px;font:16px/1.6 system-ui,sans-serif;color:#202124}label{display:grid;gap:6px;margin:16px 0}textarea,button{font:inherit;padding:10px}textarea{min-height:100px}button{cursor:pointer}pre{white-space:pre-wrap;background:#f5f6f7;padding:16px;min-height:160px}#assistant-status{font-weight:700}</style>
+</head>
+<body>
+  <main>
+    <h1>工作台 AI 助手</h1>
+    <p>可继续商品详情页项目，也可请求订单、投放和千川数据解释。AI 只通过受控服务访问数据。</p>
+    <label>Project ID<input id="project-id" value="example"></label>
+    <label>Profile ID<input id="profile-id" value="example"></label>
+    <button id="load-context" type="button">加载项目上下文</button>
+    <p>快捷任务：</p>
+    <button id="quick-product-brief" type="button">生成 Product Brief</button>
+    <button id="quick-blueprint" type="button">生成页面蓝图</button>
+    <button id="quick-qa" type="button">执行详情页 QA</button>
+    <label>任务<textarea id="assistant-task">继续商品详情页，检查当前项目下一步应该做什么</textarea></label>
+    <label>项目上下文<textarea id="project-context">{"type":"product-detail-page","status":"READY_WITH_GAPS","current":"product-brief","next":"补齐商品设计资料清单"}</textarea></label>
+    <button id="send-task" type="button">发送给 AI</button>
+    <button id="clear-history" type="button">清空本项目对话</button>
+    <section><h2>本项目对话</h2><div id="conversation-history"></div></section>
+    <p>状态：<span id="assistant-status">待发送</span></p>
+    <pre id="assistant-response"></pre>
+  </main>
+  <script src="ai-assistant.js"></script>
+</body>
+</html>

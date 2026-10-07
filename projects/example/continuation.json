@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "projectId": "example-project",
+  "continuingFrom": {
+    "type": "product-detail-page",
+    "source": "example-project/previous-checkpoint"
+  },
+  "task": "商品详情页",
+  "product": {
+    "name": "待补充商品",
+    "heroAsset": "assets/hero.png",
+    "specification": "待确认"
+  },
+  "platforms": ["douyin"],
+  "completed": ["product-brief"],
+  "current": "storyboard",
+  "next": "补充商品证据并完成首屏蓝图",
+  "claims": []
+}
