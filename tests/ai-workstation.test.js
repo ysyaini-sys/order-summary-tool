@@ -16,6 +16,8 @@ test('builds a bounded product-detail context from project checkpoint', () => {
   assert.equal(context.skill, 'product-detail');
   assert.equal(context.project.id, 'rice-2026');
   assert.equal(context.project.continuation.next, '首屏 QA');
+  assert.equal(context.skillDefinition.id, 'product-detail');
+  assert.match(context.instructions, /证据规则/);
   assert.ok(context.instructions.includes('不得把未核验卖点写成已证实事实'));
 });
 

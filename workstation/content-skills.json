@@ -1,0 +1,83 @@
+[
+  {
+    "id": "product-discovery",
+    "name": "选品与趋势发现",
+    "stage": "discover",
+    "keywords": ["选品", "趋势", "品类机会", "竞品调研", "市场机会"],
+    "description": "整理用户提供的市场、商品和经营信息，形成机会假设与待验证问题。",
+    "deliverable": "机会假设、目标人群、证据来源、风险与下一步验证清单",
+    "evidenceRule": "外部趋势和市场数据必须注明来源与时间；无来源时只能标为假设。"
+  },
+  {
+    "id": "content-planning",
+    "name": "内容策划",
+    "stage": "plan",
+    "keywords": ["内容策划", "内容计划", "选题规划", "campaign", "内容 brief"],
+    "description": "将项目目标拆分为可执行的渠道、主题、节奏和内容 brief。",
+    "deliverable": "目标、受众、信息主张、选题矩阵、渠道节奏与衡量指标",
+    "evidenceRule": "目标与约束来自项目资料；不虚构平台政策或经营数据。"
+  },
+  {
+    "id": "short-video-script",
+    "name": "短视频脚本",
+    "stage": "produce",
+    "keywords": ["短视频脚本", "视频脚本", "口播脚本", "分镜脚本"],
+    "description": "按目标平台和受众组织开场、内容、演示、行动引导及拍摄提示。",
+    "deliverable": "分镜、口播、画面说明、时长建议及待核验主张",
+    "evidenceRule": "价格、功效、资质和比较性主张必须绑定用户提供的证据。"
+  },
+  {
+    "id": "livestream-script",
+    "name": "直播话术",
+    "stage": "produce",
+    "keywords": ["直播话术", "直播脚本", "直播流程", "主播话术"],
+    "description": "设计直播段落、互动问题、商品讲解顺序和合规提醒。",
+    "deliverable": "流程表、讲解话术、互动节点、转场与风险提醒",
+    "evidenceRule": "不承诺未经证实的效果、库存、价格或稀缺性。"
+  },
+  {
+    "id": "product-detail",
+    "name": "商品详情页",
+    "stage": "produce",
+    "keywords": ["商品详情页", "详情页", "商品页", "产品详情", "product detail"],
+    "description": "产出商品页面结构、模块文案和视觉说明；是内容生产中的一种能力。",
+    "deliverable": "页面蓝图、模块文案、素材清单与证据状态",
+    "evidenceRule": "商品身份资料不足时阻止正式成稿；未核验卖点不得写成事实。"
+  },
+  {
+    "id": "social-copy",
+    "name": "社媒文案",
+    "stage": "produce",
+    "keywords": ["社媒文案", "种草文案", "笔记文案", "标题文案", "朋友圈文案"],
+    "description": "根据渠道、受众和内容目标撰写可编辑的社媒文案变体。",
+    "deliverable": "标题、正文、行动引导、标签建议和事实核验点",
+    "evidenceRule": "不编造用户评价、体验或产品效果。"
+  },
+  {
+    "id": "creative-review",
+    "name": "素材审核",
+    "stage": "review",
+    "keywords": ["审核素材", "素材审核", "审核文案", "创意审核", "合规检查", "广告素材"],
+    "description": "按品牌、证据、表达清晰度和风险提示审阅用户提供的素材。",
+    "deliverable": "问题清单、严重度、证据缺口及可选修改建议",
+    "evidenceRule": "只指出风险与缺口，不替代平台或法律合规审核。"
+  },
+  {
+    "id": "publish-prep",
+    "name": "发布准备",
+    "stage": "publish",
+    "keywords": ["发布准备", "发布清单", "上线检查", "发布排期", "发布文案"],
+    "description": "生成用户手动发布所需的检查表、资产清单和排期建议。",
+    "deliverable": "发布检查表、渠道资产清单、排期建议和人工确认项",
+    "evidenceRule": "不登录账号、不调用发布接口、不自动投放或发送通知。"
+  },
+  {
+    "id": "content-retrospective",
+    "name": "内容复盘",
+    "stage": "learn",
+    "keywords": ["内容复盘", "复盘内容", "复盘总结", "内容表现分析"],
+    "description": "基于用户提供的已发布内容及汇总指标，整理观察、假设和实验。",
+    "deliverable": "结果摘要、表现差异、可能原因、下一轮实验与数据缺口",
+    "evidenceRule": "区分观察与因果推测；不把相关性表述为因果关系。"
+  }
+]
