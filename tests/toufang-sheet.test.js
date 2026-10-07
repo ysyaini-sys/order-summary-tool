@@ -2,26 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const { buildAiSummary, buildDouyinSheetRows, buildPlatformSummaryRows, excludeAllDateRows, expandRowRangeForMergedCells, rowIndexAtY, syncUploadButton } = require('../toufang-sheet.js');
-
-test('AI explanation summary aggregates metrics only and omits raw report details', () => {
-  const summary = buildAiSummary([
-    { platform: '抖音投放数据', cost: 100, sales: 250, orders: 10, productId: 'sku-1', source: 'private.xlsx' },
-    { platform: '抖音投放数据', cost: 50, sales: 100, orders: 5, productId: 'sku-2', source: 'private.xlsx' },
-    { platform: '快手投放数据', cost: 0, sales: 10, orders: 0, productId: 'sku-3', source: 'another.xlsx' }
-  ], 'all', '2026-09-01', '2026-09-30');
-
-  assert.deepEqual(summary, {
-    scope: 'all', dateFrom: '2026-09-01', dateTo: '2026-09-30',
-    platforms: [
-      { platform: '抖音投放数据', cost: 150, sales: 350, orders: 15, roi: 350 / 150, costPerOrder: 10 },
-      { platform: '快手投放数据', cost: 0, sales: 10, orders: 0, roi: null, costPerOrder: null }
-    ],
-    total: { platform: '合计', cost: 150, sales: 360, orders: 15, roi: 2.4, costPerOrder: 10 }
-  });
-  assert.equal(JSON.stringify(summary).includes('private.xlsx'), false);
-  assert.equal(JSON.stringify(summary).includes('sku-1'), false);
-});
+const { buildDouyinSheetRows, buildPlatformSummaryRows, excludeAllDateRows, expandRowRangeForMergedCells, rowIndexAtY, syncUploadButton } = require('../toufang-sheet.js');
 
 test('Douyin online sheet keeps screenshot-style daily rows under merged product groups', () => {
   const rows = buildDouyinSheetRows([
