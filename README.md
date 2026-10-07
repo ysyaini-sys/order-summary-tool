@@ -20,7 +20,7 @@
 
 ## 电商内容中心与本机 AI
 
-工作台正扩展为覆盖 `发现 → 规划 → 生产 → 审核 → 发布 → 复盘` 的通用电商内容流程。商品详情页只是其中一个 Skill；Profile、Projects 和内容产物作为外围增量模块，不替换订单、投放、千川的既有页面和计算链路。当前 AI 服务默认只监听本机回环地址；可沿用 OpenAI，也可在本机配置 OpenClaw Gateway 的 OpenAI-compatible Responses 接口，配置方式见 [server/README.md](server/README.md)。
+新增的电商内容中心覆盖 `发现 → 策划 → 生产 → 审核 → 发布准备 → 复盘`。商品详情页只是其中一个 Skill；选品与趋势、短视频脚本、直播话术、社媒文案、素材审核、发布准备和内容复盘也有独立入口。Profile、Project 和产物作为外围增量模块，不替换订单、投放、千川的既有页面和计算链路。服务默认只监听本机回环地址；可沿用 OpenAI，也可本机连接 OpenClaw Gateway 的 OpenAI-compatible Responses 接口，见 [server/README.md](server/README.md)。
 
 接入本机 OpenClaw 示例（凭据仅存在服务端环境中）：
 

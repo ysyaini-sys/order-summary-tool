@@ -20,6 +20,10 @@ node --test tests/*.test.js
 | 导出安全 | 自动 | 用户输入转义，导出数据不注入 `script` 结束标签 | 测试输出 |
 | Profile / Projects 隔离 | 自动 | 示例 JSON 有效，现有页面不引用新目录 | 测试输出 |
 | 商品详情页工作台 | 自动 | 独立入口、身份门禁、checkpoint 续接、蓝图和步骤状态可验证 | 测试输出 |
+| 内容中心/Profile/Project | 自动 | 无 AI 可建 Profile/Project、读写六阶段 checkpoint、恢复旧样例 ID、导出项目 JSON | `tests/content-center.test.js`、`tests/project-store.test.js` |
+| 六阶段 Skill 路由 | 自动 | 发现/策划/生产/审核/发布准备/复盘均有注册 Skill；详情页只是一个生产 Skill | `tests/content-skills.test.js`、`tests/agent-router.test.js` |
+| 本机 AI 接入 | 自动 | OpenAI 默认行为不变；OpenClaw-compatible endpoint 可配；健康/错误响应不泄露 token 或地址 | `tests/openai-client.test.js`、`tests/ai-workstation.test.js` |
+| 旧工作区入口 | 自动 | 订单、投放、千川、详情页和 AI 助手保留原入口，并新增内容中心导航 | `tests/workspace-layout.test.js`、`tests/content-center.test.js` |
 
 ## 必须在真实运行环境补做
 
@@ -35,3 +39,5 @@ node --test tests/*.test.js
 ## 合并规则
 
 自动项有一项失败就不能视为第一阶段完成。人工项在没有真实运行证据前保持未完成，不得以页面测试替代。
+
+新增内容中心的回归不替代或降低上方既有订单、投放、千川的测试；这三条原链路仍需在每次改动后全量运行 `node --test tests/*.test.js`。本地 AI/内容流程测试也不能代替整点盯盘、通知推送、云端运行、MCP 和账户抓取的真实环境验收；这些在当前仓库仍标记为 `not-applicable-to-repo` 或 `manual-required`。
