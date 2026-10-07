@@ -131,4 +131,4 @@
 - [x] Run the full suite (95/95) and inspect the diff for legacy calculation changes, secret leakage, and tracked runtime user data; no core calculator changes or runtime private data are present.
 - [x] Resolve independent review findings: constrain Gateway-token destinations to loopback, reject symlinked JSON records, restore the legacy "商品详情" route, and enable AI after creating the first project.
 - [x] Commit as `docs: document ecommerce agent workflows`.
-- [ ] Push the isolated branch and open a PR only after the user previews and confirms this built local preview, per the user's approval checkpoint.
+- [x] After user approval, push the isolated branch and open PR #16 against `main`; leave it open for preview/acceptance and do not merge.
