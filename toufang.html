@@ -18,6 +18,8 @@
         <a href="index.html">订单汇总</a>
         <a href="toufang.html" aria-current="page">投放数据汇总</a>
         <a href="qianchuan.html" target="_blank" rel="noopener noreferrer">千川商品分析</a>
+        <a href="detail-page.html" target="_blank" rel="noopener noreferrer">商品详情页项目</a>
+        <a href="ai-assistant.html" target="_blank" rel="noopener noreferrer">AI 助手</a>
       </nav>
     </aside>
     <main class="workspace-main">
@@ -41,8 +43,10 @@
       </section>
       <section class="toufang-grid" id="upload-grid" aria-label="投放报表上传"></section>
       <section class="workspace-card toufang-panel">
-        <div class="result-wrap"><div class="result-head"><h2>投放汇总结果</h2><span>消耗、成交金额、订单数、ROI、转化成本</span></div><button class="action" id="open-sheet" type="button" disabled>📊 在线表格</button></div>
+        <div class="result-wrap"><div class="result-head"><h2>投放汇总结果</h2><span>消耗、成交金额、订单数、ROI、转化成本</span></div><button class="action" id="explain-ai" type="button" disabled>AI 解读汇总</button><button class="action" id="open-sheet" type="button" disabled>📊 在线表格</button></div>
         <div id="result"><div class="empty">上传本地投放报表后，点击“一键汇总”。</div></div>
+        <p class="workspace-muted">AI 解读仅发送平台汇总指标与日期范围，不发送商品、文件名或原始明细。</p>
+        <pre id="ai-analysis" role="status" aria-live="polite" class="empty">完成汇总后，可选择让 AI 解读当前结果。</pre>
       </section>
     </main>
   </div>
@@ -60,6 +64,9 @@
     let scope = 'all';
     let lastRows = [];
     let lastScope = 'all';
+    let lastStart = '';
+    let lastEnd = '';
+    let analysisRequest = 0;
 
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
     const asNumber = value => { const number = Number(String(value ?? '').replace(/[¥￥,，\s]/g, '')); return Number.isFinite(number) ? number : 0; };
@@ -76,6 +83,11 @@
     const field = (row, expression) => { const key = Object.keys(row).find(name => expression.test(name)); return key ? row[key] : ''; };
 
     function showStatus(kind, message) { statusNode.className = `status show ${kind}`; statusNode.textContent = message; }
+    function invalidateAiSummary() {
+      document.getElementById('explain-ai').disabled = true;
+      document.getElementById('ai-analysis').textContent = '汇总条件已变化，请重新汇总后再请求 AI 解读。';
+      analysisRequest += 1;
+    }
     function renderFiles(key) {
       const node = grid.querySelector(`[data-files="${key}"]`);
       node.innerHTML = files[key].map((file, index) => `<div class="file-item"><span>${escapeHtml(file.name)}</span><button type="button" data-remove="${key}" data-index="${index}">移除</button></div>`).join('');
@@ -89,7 +101,12 @@
       for (const file of acceptedFiles) {
         if (!files[key].some(item => item.name === file.name && item.size === file.size)) files[key].push(file);
       }
-      if (acceptedFiles.length) document.getElementById('open-sheet').disabled = true;
+      if (acceptedFiles.length) {
+        document.getElementById('open-sheet').disabled = true;
+        document.getElementById('explain-ai').disabled = true;
+        document.getElementById('ai-analysis').textContent = '报表已变化，请重新汇总后再请求 AI 解读。';
+        analysisRequest += 1;
+      }
       renderFiles(key);
     }
     grid.innerHTML = platforms.map(platform => `<article class="workspace-card upload-card" tabindex="0" aria-label="${platform.label}上传区域"><h2>${platform.label}</h2><p>${platform.tip}</p><label for="ad-file-${platform.key}">选择文件，或将文件拖到这里<input id="ad-file-${platform.key}" data-input="${platform.key}" type="file" accept=".xlsx,.xls,.csv" multiple></label><div class="file-list" data-files="${platform.key}"></div>${platform.key === 'douyin' ? '<button class="action online-sheet-button" type="button" data-online-sheet="douyin" hidden disabled>在线表格</button>' : ''}</article>`).join('');
@@ -128,9 +145,13 @@
       if (!button) return;
       files[button.dataset.remove].splice(Number(button.dataset.index), 1);
       document.getElementById('open-sheet').disabled = true;
+      document.getElementById('explain-ai').disabled = true;
+      document.getElementById('ai-analysis').textContent = '报表已变化，请重新汇总后再请求 AI 解读。';
+      analysisRequest += 1;
       renderFiles(button.dataset.remove);
     });
-    document.querySelectorAll('[data-scope]').forEach(button => button.addEventListener('click', () => { scope = button.dataset.scope; document.querySelectorAll('[data-scope]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); }));
+    document.querySelectorAll('[data-scope]').forEach(button => button.addEventListener('click', () => { scope = button.dataset.scope; document.querySelectorAll('[data-scope]').forEach(item => item.setAttribute('aria-pressed', String(item === button))); invalidateAiSummary(); }));
+    document.querySelectorAll('#date-from, #date-to').forEach(input => input.addEventListener('change', invalidateAiSummary));
     document.getElementById('btn-automa-toufang').addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('automa:execute-workflow', { detail: { publicId: 'toufang' } }));
       showStatus('ok', '已触发一键下载，请等待 Automa 完成投放数据下载。');
@@ -176,10 +197,59 @@
       document.getElementById('result').innerHTML = `<div class="table-wrap"><table class="result-table"><thead><tr><th>平台</th><th>消耗（元）</th><th>成交金额（元）</th><th>订单数</th><th>ROI</th><th>转化成本（元）</th></tr></thead><tbody>${[...all, grand].map(row => `<tr><td>${escapeHtml(row.platform)}</td><td class="num">${row.cost.toFixed(2)}</td><td class="num">${row.sales.toFixed(2)}</td><td class="num">${row.orders}</td><td class="num">${row.cost ? (row.sales / row.cost).toFixed(2) : '—'}</td><td class="num">${row.orders ? (row.cost / row.orders).toFixed(2) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
     }
     async function summarizeAndRender() {
-      try { showStatus('warn', '正在读取并汇总本地投放报表…'); const result = await summarize(); lastRows = result.rows; lastScope = scope; render(lastRows); document.getElementById('export').disabled = !lastRows.length; document.getElementById('open-sheet').disabled = !lastRows.length; showStatus(lastRows.length ? 'ok' : 'err', lastRows.length ? `已汇总 ${lastRows.length} 条有效明细（源数据 ${result.sourceRows} 行${result.skipped ? `，跳过 ${result.skipped} 行` : ''}）。` : '没有找到可汇总的数据。'); } catch (error) { document.getElementById('open-sheet').disabled = true; showStatus('err', `汇总失败：${error.message}`); }
+      document.getElementById('explain-ai').disabled = true;
+      document.getElementById('ai-analysis').textContent = '完成汇总后，可选择让 AI 解读当前结果。';
+      analysisRequest += 1;
+      try {
+        showStatus('warn', '正在读取并汇总本地投放报表…');
+        const result = await summarize();
+        lastRows = result.rows;
+        lastScope = scope;
+        lastStart = document.getElementById('date-from').value;
+        lastEnd = document.getElementById('date-to').value;
+        render(lastRows);
+        document.getElementById('export').disabled = !lastRows.length;
+        document.getElementById('open-sheet').disabled = !lastRows.length;
+        document.getElementById('explain-ai').disabled = !lastRows.length;
+        showStatus(lastRows.length ? 'ok' : 'err', lastRows.length ? `已汇总 ${lastRows.length} 条有效明细（源数据 ${result.sourceRows} 行${result.skipped ? `，跳过 ${result.skipped} 行` : ''}）。` : '没有找到可汇总的数据。');
+      } catch (error) {
+        document.getElementById('open-sheet').disabled = true;
+        showStatus('err', `汇总失败：${error.message}`);
+      }
       return lastRows.length > 0;
     }
     document.getElementById('summarize').addEventListener('click', summarizeAndRender);
+    document.getElementById('explain-ai').addEventListener('click', async event => {
+      if (!lastRows.length) return;
+      const button = event.currentTarget;
+      const requestId = ++analysisRequest;
+      button.disabled = true;
+      document.getElementById('ai-analysis').textContent = '正在请求 AI 解读…';
+      const summary = ToufangSheet.buildAiSummary(lastRows, lastScope, lastStart, lastEnd);
+      try {
+        const response = await fetch('/api/assistant', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            task: '请解释这份投放汇总数据：概括平台表现，指出值得关注的差异和数据限制，不要推断未提供的信息，也不要建议直接修改投放。ROI 和转化成本以给定汇总为准。',
+            project: { reportType: 'ad-summary', summary }
+          })
+        });
+        const result = await response.json();
+        if (requestId !== analysisRequest) return;
+        if (!response.ok) throw new Error(result.message || 'AI 服务暂不可用。');
+        document.getElementById('ai-analysis').textContent = result.response?.output_text || 'AI 未返回可显示的文字结果。';
+      } catch (error) {
+        if (requestId === analysisRequest) {
+          const message = error instanceof TypeError
+            ? '无法连接本机 AI 服务。请先启动服务，并通过 http://127.0.0.1:8787/toufang.html 打开此页面。'
+            : error.message;
+          document.getElementById('ai-analysis').textContent = `AI 解读失败：${message}`;
+        }
+      } finally {
+        if (requestId === analysisRequest) button.disabled = false;
+      }
+    });
     document.getElementById('open-sheet').addEventListener('click', () => {
       if (!lastRows.length) return;
       let rows;

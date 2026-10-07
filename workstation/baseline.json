@@ -1,0 +1,14 @@
+{
+  "checks": [
+    { "id": "orders-entrypoints", "type": "files", "paths": ["index.html", "toufang.html", "qianchuan.html"] },
+    { "id": "local-processing", "type": "files", "paths": ["qianchuan.js", "toufang-sheet.js"] },
+    { "id": "analysis-tests", "type": "files", "paths": ["tests/qianchuan.test.js", "tests/qianchuan-page.test.js", "tests/toufang-sheet.test.js"] },
+    { "id": "export-safety", "type": "files", "paths": ["tests/qianchuan-page.test.js"] },
+    { "id": "account-capture-completeness", "type": "manual-required", "message": "需要真实账户文件或抓取环境验证是否漏抓。" },
+    { "id": "top-spend-input", "type": "manual-required", "message": "需要十大消耗输入或真实抓取链路验证缺失/读取失败不会生成伪造排名。" },
+    { "id": "hourly-watch", "type": "not-applicable-to-repo", "message": "当前仓库未包含整点盯盘运行时。" },
+    { "id": "notifications", "type": "not-applicable-to-repo", "message": "当前仓库未包含通知/推送运行时。" },
+    { "id": "cloud-runtime", "type": "not-applicable-to-repo", "message": "当前仓库未包含云端运行配置。" },
+    { "id": "mcp", "type": "not-applicable-to-repo", "message": "当前仓库未包含 MCP 实现。" }
+  ]
+}

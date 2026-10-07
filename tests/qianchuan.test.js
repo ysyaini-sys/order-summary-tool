@@ -1,9 +1,37 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {analyze,date,number,summarizeProducts,productSummaryRows}=require('../qianchuan.js');
+const {analyze,buildAiSummary,date,number,summarizeProducts,productSummaryRows}=require('../qianchuan.js');
 const headers=['日期','商品ID','商品名称','综合成本','净成交金额','综合营销ROI'];
 const row=['2026-09-22','3823309765342266082','测试商品',100,250,2.5];
 const file=(rows,extra={})=>({name:'账户_2026-09-22_乘方-商品-商品数据明细.xlsx',lastModified:1,rows:[headers,...rows],...extra});
+test('千川 AI 摘要只发送当前商品汇总指标，不包含商品、账户或文件明细',()=>{
+ const summary=buildAiSummary([
+  {kind:'product',account:'敏感账户A',date:'2026-09-21',id:'sku-secret-a',name:'保密商品A',cost:100,sales:200,source:'private-a.xlsx'},
+  {kind:'product',account:'敏感账户A',date:'2026-09-21',id:'sku-secret-b',name:'保密商品B',cost:50,sales:100,source:'private-a.xlsx'},
+  {kind:'video',account:'敏感账户A',date:'2026-09-21',id:'video-secret',name:'保密素材',cost:900,sales:900,source:'private-a.xlsx'},
+  {kind:'product',account:'敏感账户B',date:'2026-09-22',id:'sku-secret-c',name:'保密商品C',cost:70,sales:80,source:'private-b.xlsx'}
+ ],{date:'all',account:'all',query:''});
+ assert.deepEqual(summary,{
+  selection:{date:'all',account:'all',searchApplied:false},
+  totals:{productRows:3,uniqueProducts:3,cost:220,sales:380,roi:380/220},
+  accounts:[
+   {label:'账户 1',productRows:2,cost:150,sales:300,roi:2},
+   {label:'账户 2',productRows:1,cost:70,sales:80,roi:80/70}
+  ]
+ });
+ const serialized=JSON.stringify(summary);
+ for(const privateValue of ['敏感账户','sku-secret','保密商品','private-','保密素材']) assert.equal(serialized.includes(privateValue),false);
+});
+test('千川 AI 摘要遵守当前日期、账户和搜索筛选',()=>{
+ const records=[
+  {kind:'product',account:'账户A',date:'2026-09-21',id:'a',name:'商品A',cost:10,sales:20},
+  {kind:'product',account:'账户B',date:'2026-09-22',id:'b',name:'目标商品',cost:30,sales:60},
+  {kind:'product',account:'账户B',date:'2026-09-22',id:'c',name:'其他商品',cost:100,sales:100}
+ ];
+ const summary=buildAiSummary(records,{date:'2026-09-22',account:'账户B',query:'目标'});
+ assert.deepEqual(summary.totals,{productRows:1,uniqueProducts:1,cost:30,sales:60,roi:2});
+ assert.deepEqual(summary.selection,{date:'2026-09-22',account:'single-account',searchApplied:true});
+});
 test('商品和视频独立、长 ID 保持文本、全部行排除',()=>{
  const video={name:'账户_2026-09-22_乘方-商品-素材-视频.xlsx',rows:[['日期','素材ID','素材视频名称','综合成本','净成交金额','综合营销ROI'],row]};
  const r=analyze([file([row,['全部',...row.slice(1)]]),video]);
