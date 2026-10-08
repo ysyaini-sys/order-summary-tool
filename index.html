@@ -777,7 +777,7 @@ function buildSummarySheet(perFileResults){
       if(!flavor){ for(let j=0;j<FLAVORS.length;j++){ if(spec.indexOf(FLAVORS[j])!==-1){ flavor=FLAVORS[j]; break; } } }
       if(!wineProduct&&!flavor) return;
       const isCanned=spec.indexOf('罐')!==-1;
-      const store=wineProduct?'饮品店':(isCanned?'官方店':'饮品店');
+      const store=wineProduct?'果酒店':(isCanned?'官方店':'饮品店');
       const productName=wineProduct||flavor+(isCanned?'-罐装':'-玻璃瓶');
       const k=store+'|'+productName;
       if(!totals[k]) totals[k]={box:0,amount:0,id:currentId};
@@ -805,9 +805,9 @@ function buildSummarySheet(perFileResults){
     ['官方店','','蔓越莓-罐装'],
     ['官方店','','白桦-罐装'],
     ['官方店','','山梨-罐装'],
-    ['饮品店','','白葡萄酒'],
-    ['饮品店','','山葡萄酒'],
-    ['饮品店','','白桦酒'],
+    ['果酒店','','白葡萄酒'],
+    ['果酒店','','山葡萄酒'],
+    ['果酒店','','白桦酒'],
     ['官方店',QYQ_ID,'泉阳泉联名气泡水6罐'],
     ['官方店','','泉阳泉联名气泡水12罐'],
     ['官方店',QYQ_ID,'泉阳泉联名气泡水24罐']

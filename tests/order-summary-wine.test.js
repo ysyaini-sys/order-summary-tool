@@ -25,9 +25,9 @@ test('抖音酒类商品优先按商品ID归入白葡萄酒、山葡萄酒和白
     productRow('3844334227407634451','180ml*6瓶(1箱)',4,480)
   ]);
   const rows=summary.rows;
-  assert.deepEqual(Array.from(rows.find(row=>row[2]==='白葡萄酒')),['饮品店','3844332672436535791','白葡萄酒',2,240]);
-  assert.deepEqual(Array.from(rows.find(row=>row[2]==='山葡萄酒')),['饮品店','3844334104942346341','山葡萄酒',3,360]);
-  assert.deepEqual(Array.from(rows.find(row=>row[2]==='白桦酒')),['饮品店','3844334227407634451','白桦酒',4,480]);
+  assert.deepEqual(Array.from(rows.find(row=>row[2]==='白葡萄酒')),['果酒店','3844332672436535791','白葡萄酒',2,240]);
+  assert.deepEqual(Array.from(rows.find(row=>row[2]==='山葡萄酒')),['果酒店','3844334104942346341','山葡萄酒',3,360]);
+  assert.deepEqual(Array.from(rows.find(row=>row[2]==='白桦酒')),['果酒店','3844334227407634451','白桦酒',4,480]);
 });
 
 test('未知商品ID可按商品规格兜底识别酒类，旧玻璃瓶和罐装归类保留',()=>{
@@ -37,7 +37,7 @@ test('未知商品ID可按商品规格兜底识别酒类，旧玻璃瓶和罐装
     productRow('canned-old','山葡萄原汁1箱;320ml*12罐',3,300)
   ]);
   const rows=summary.rows;
-  assert.deepEqual(Array.from(rows.find(row=>row[2]==='白葡萄酒')),['饮品店','wine-unknown','白葡萄酒',1,100]);
+  assert.deepEqual(Array.from(rows.find(row=>row[2]==='白葡萄酒')),['果酒店','wine-unknown','白葡萄酒',1,100]);
   assert.deepEqual(Array.from(rows.find(row=>row[2]==='山葡萄-玻璃瓶')),['饮品店','glass-old','山葡萄-玻璃瓶',2,200]);
   assert.deepEqual(Array.from(rows.find(row=>row[2]==='山葡萄-罐装')),['官方店','canned-old','山葡萄-罐装',3,300]);
 });
