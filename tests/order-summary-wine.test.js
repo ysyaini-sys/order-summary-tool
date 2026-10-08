@@ -41,3 +41,26 @@ test('未知商品ID可按商品规格兜底识别酒类，旧玻璃瓶和罐装
   assert.deepEqual(Array.from(rows.find(row=>row[2]==='山葡萄-玻璃瓶')),['饮品店','glass-old','山葡萄-玻璃瓶',2,200]);
   assert.deepEqual(Array.from(rows.find(row=>row[2]==='山葡萄-罐装')),['官方店','canned-old','山葡萄-罐装',3,300]);
 });
+
+test('抖音汇总按截图顺序排列品类且不包含泉阳泉12罐',()=>{
+  const summary=buildSummary([]);
+  assert.deepEqual(Array.from(summary.rows.slice(1),row=>row[2]),[
+    '山葡萄-玻璃瓶',
+    '冰白葡萄-玻璃瓶',
+    '软枣-玻璃瓶',
+    '蔓越莓-玻璃瓶',
+    '白桦-玻璃瓶',
+    '山梨-玻璃瓶',
+    '山葡萄-罐装',
+    '冰白葡萄-罐装',
+    '软枣-罐装',
+    '蔓越莓-罐装',
+    '白桦-罐装',
+    '山梨-罐装',
+    '泉阳泉联名气泡水6罐',
+    '泉阳泉联名气泡水24罐',
+    '白桦酒',
+    '白葡萄酒',
+    '山葡萄酒'
+  ]);
+});
