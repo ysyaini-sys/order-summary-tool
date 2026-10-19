@@ -550,18 +550,17 @@ function aggregateAllDateResults(tab, perFileResults){
       const dates = await detectDates(files, tab);
       if(dates.length===0){ area.innerHTML = '<span style="color:#c62828;font-size:12px;">未识别到日期</span>'; return; }
       selectedDate = dates[dates.length-1];
-      if(tab==='douyin'||tab==='shipinhao'){
-        const opts=buildDateOptions(dates,selectedDate).map(option=>'<option value="'+option.value+'"'+(option.selected?' selected':'')+'>'+option.label+'</option>').join('');
-        area.innerHTML='📅 <select id="date-select-'+tab+'">'+opts+'</select>';
-        document.getElementById('date-select-'+tab).addEventListener('change',e=>{selectedDate=e.target.value;});
-      } else if(dates.length===1){ area.innerHTML = '📅 <span class="date-badge">'+dates[0]+'</span>'; }
-      else { let opts = dates.map(d=>'<option value="'+d+'"'+(d===selectedDate?' selected':'')+'>'+d+'</option>').join(''); area.innerHTML = '📅 <select id="date-select-'+tab+'">'+opts+'</select>'; document.getElementById('date-select-'+tab).addEventListener('change', e=>{ selectedDate = e.target.value; }); }
+      const opts=buildDateOptions(dates,selectedDate).map(option=>'<option value="'+option.value+'"'+(option.selected?' selected':'')+'>'+option.label+'</option>').join('');
+      area.innerHTML='📅 <select id="date-select-'+tab+'">'+opts+'</select>';
+      document.getElementById('date-select-'+tab).addEventListener('change',e=>{selectedDate=e.target.value;});
       btn.disabled = false;
     } catch(err){ area.innerHTML = '<span style="color:#c62828;font-size:12px;">'+(err.message||'日期识别失败')+'</span>'; }
   });
   document.getElementById('btn-process-'+tab).addEventListener('click', async ()=>{
     const files = uploads[tab].getFiles();
     if(files.length===0){ showMsg(tab,'err','请先上传文件'); return; }
+    const dateSelect=document.getElementById('date-select-'+tab);
+    if(dateSelect) selectedDate=dateSelect.value;
     if(tab==='kuaishou' && !selectedDate && window._kuaishouDate) selectedDate = window._kuaishouDate;
     if(!selectedDate){ showMsg(tab,'err','未识别到日期'); return; }
     const isAllDates=selectedDate==='__all_dates__';
@@ -783,8 +782,11 @@ document.getElementById('ks-password').addEventListener('change', async function
   try {
     var dates = await detectDates(files, 'kuaishou');
     if(dates.length > 0){
-      area.innerHTML = '📅 <span class="date-badge">'+dates[dates.length-1]+'</span>';
+      var selectedDate = dates[dates.length-1];
+      var opts = buildDateOptions(dates,selectedDate).map(function(option){ return '<option value="'+option.value+'"'+(option.selected?' selected':'')+'>'+option.label+'</option>'; }).join('');
+      area.innerHTML = '📅 <select id="date-select-kuaishou">'+opts+'</select>';
       window._kuaishouDate = dates[dates.length-1];
+      document.getElementById('date-select-kuaishou').addEventListener('change',function(e){ window._kuaishouDate=e.target.value; });
       btn.disabled = false;
     } else {
       area.innerHTML = '<span style="color:#c62828;font-size:12px;">仍未识别到日期</span>';
